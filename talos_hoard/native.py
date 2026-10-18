@@ -49,6 +49,8 @@ def factory(key, data_dir, *, port):
     Config = importlib.import_module(package + ".config").Config
     config = Config.from_env()
     config.data_dir, config.port, config.data_dir_configured = data_dir, port, True
+    if key == "services":
+        config.retired_ids = ("argus", "echo", "funes", "cassandra", "diskhoard", "tantalus", "phileas")
     return importlib.import_module(package + ".main").create_app(config)
 
 from echo.hoard_link.copilot import install_copilot
