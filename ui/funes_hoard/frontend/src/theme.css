@@ -1,0 +1,107 @@
+:root {
+  --font-body: "Source Sans 3 Variable", var(--hoard-font-sans);
+  --font-heading: "Source Serif 4 Variable", var(--hoard-font-serif);
+
+  /* Dark by default, driven by the shared Hoard tokens (hoard-theme.css). */
+  --accent: var(--hoard-accent);
+  --accent-soft: var(--hoard-accent-soft);
+  --accent-strong: var(--hoard-accent-strong);
+  --on-accent: var(--hoard-accent-ink);
+  --now: #c98a3e;
+  --now-soft: #f0d9b8;
+  --mark-bg: #5a4526;
+  --mark-text: #f6e2c0;
+
+  --bg: var(--hoard-deep);
+  --bg-elevated: var(--hoard-surface);
+  --bg-sidebar: var(--hoard-surface);
+  --text: var(--hoard-text);
+  --text-muted: var(--hoard-text-muted);
+  --border: var(--hoard-border);
+  --danger: #e2685a;
+  --danger-soft: rgba(226, 104, 90, 0.14);
+  --success: var(--hoard-success);
+
+  /* Category palette: distinct hues at similar lightness so no category
+     reads as "empty track"; amber is reserved for the "now" marker. */
+  --cat-coding: #4c67a8;
+  --cat-writing: #8a63b8;
+  --cat-reading: #2f8ea3;
+  --cat-communication: #3f9a72;
+  --cat-meetings: #c0625e;
+  --cat-browsing: #7f9cc4;
+  --cat-design: #b35f98;
+  --cat-media: #57b3a0;
+  --cat-games: #a3864f;
+  --cat-system: #8a8f9c;
+  --cat-other: #b3b8c4;
+  --mark-bg: #f3dcb6;
+  --mark-text: #5a3a0c;
+
+  --radius: var(--hoard-radius-lg);
+  --shadow: var(--hoard-shadow);
+}
+
+/* Original light palette, kept as an option (data-theme="light"). */
+:root[data-theme="light"] {
+  --accent: #6b7593;
+  --accent-soft: #aab4c8;
+  --accent-strong: #4a5578;
+  --on-accent: #ffffff;
+  --mark-bg: #f3dcb6;
+  --mark-text: #5a3a0c;
+  --bg: #f6f7fa;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: #eef0f5;
+  --text: #1c2029;
+  --text-muted: #5b6272;
+  --border: #dde1ea;
+  --danger: #b3462c;
+  --danger-soft: #f7ded6;
+  --success: #3f7a53;
+  --shadow: 0 1px 2px rgba(20, 24, 32, 0.06), 0 4px 16px rgba(20, 24, 32, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+code {
+  font-family: ui-monospace, monospace;
+  background: var(--bg-sidebar);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}

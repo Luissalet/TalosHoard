@@ -1,0 +1,211 @@
+"""Tools exposed to the assistant. One list drives /api/agent/* and mcp_server.py."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from .hoard_link.agentkit import AppError, Empty, Tool, ann, call_tool as run_tool, tool_catalog as catalog_of
+from .hoard_link.since import resolve_since
+from .services import Services
+
+AGENT_INSTRUCTIONS = """Echo's Hoard is the user's own clipboard history, kept only on their PC.
+It is the user's own data: quote it only when they ask for something they copied, and describe what you actually found rather than paraphrasing.
+A clip flagged sensitive is never returned to you, not even partially; never ask the user to unhide one and never try to guess its content from the preview or surrounding clips.
+clip_set changes what the user will paste next: always say plainly what you just put on their clipboard.
+When the user gives a time ("in the last hour", "hoy", "esta mañana"), pass it as since ('1h', 'hoy', 'esta mañana') to clip_recent, or to clip_search when they also describe the content, instead of listing a huge n and filtering by eye.
+When the user selects several clip IDs to compare or summarise, use clip_bundle once to get their texts and origins together.
+Never read the data folder or database directly; use these tools only."""
+
+
+SINCE_FIELD = ("Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word "
+               "(hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.")
+
+
+class RecentArgs(BaseModel):
+    n: int = Field(10, ge=1, le=200)
+    kind: str | None = Field(None, pattern="^(text|url|email|path|code|number|image)$")
+    since: str | float | None = Field(None, description=SINCE_FIELD)
+
+
+class SearchArgs(BaseModel):
+    q: str = Field(..., min_length=1, max_length=500)
+    kind: str | None = Field(None, pattern="^(text|url|email|path|code|number|image)$")
+    since: str | float | None = Field(None, description=SINCE_FIELD)
+    app: str | None = Field(None, max_length=200, description="Restrict to one source process name.")
+    limit: int = Field(20, ge=1, le=100)
+
+
+class GetArgs(BaseModel):
+    id: int = Field(..., ge=1, description="Clip id, as returned by clip_recent or clip_search.")
+    max_chars: int = Field(8000, ge=1, le=50_000)
+    offset: int = Field(0, ge=0)
+
+
+class BundleArgs(BaseModel):
+    ids: list[int] = Field(..., min_length=1, max_length=20, description="Clip IDs in the order the user wants to compare or summarise.")
+    max_chars_per_clip: int = Field(8000, ge=1, le=20_000)
+
+
+class SetArgs(BaseModel):
+    text: str = Field(..., min_length=1, max_length=200_000)
+
+
+class CopyArgs(BaseModel):
+    id: int = Field(..., ge=1)
+    allow_sensitive: bool = Field(False, description="Must be true to copy back a clip flagged sensitive; the content is still never returned to you.")
+
+
+class PinArgs(BaseModel):
+    id: int = Field(..., ge=1)
+    pinned: bool
+    label: str | None = Field(None, max_length=300)
+    tags: list[str] | None = Field(None, max_length=30)
+
+
+class DeleteArgs(BaseModel):
+    id: int = Field(..., ge=1)
+
+
+class CaptureArgs(BaseModel):
+    action: Literal["pause", "resume"]
+
+
+PUBLIC_KEYS = ("id", "kind", "preview", "chars", "source_app", "last_seen_at", "times", "pinned", "label", "tags", "sensitive")
+
+
+def _public(clip: dict) -> dict:
+    out = {k: clip[k] for k in PUBLIC_KEYS}
+    if clip["sensitive"]:
+        out["preview"] = "[oculto]"
+    return out
+
+
+def run_recent(services: Services, args: RecentArgs) -> dict:
+    since = resolve_since(args.since, services.clock())
+    clips = services.clips.list(kind=args.kind, since=since, limit=args.n)
+    out = {"clips": [_public(c) for c in clips], "count": len(clips)}
+    if since is not None:
+        out["since"] = since
+    return out
+
+
+def run_search(services: Services, args: SearchArgs) -> dict:
+    hits = services.search.search(args.q, kind=args.kind, since=resolve_since(args.since, services.clock()), source_app=args.app, limit=args.limit)
+    out = []
+    for hit in hits:
+        item = dict(hit)
+        if hit["sensitive"]:
+            item["preview"] = "[oculto]"
+            item["snippet"] = "[oculto]"
+        out.append(item)
+    return {"query": args.q, "hits": out, "count": len(out)}
+
+
+def run_get(services: Services, args: GetArgs) -> dict:
+    clip = services.clips.get(args.id)
+    if clip is None:
+        raise LookupError(f"Clip {args.id} does not exist.")
+    if clip["sensitive"]:
+        raise PermissionError("This clip is hidden content; it cannot be read.")
+    if clip["kind"] == "image":
+        return {"id": clip["id"], "kind": "image", "text": clip["text"],
+                "image_width": clip["image_width"], "image_height": clip["image_height"]}
+    text = clip["text"][args.offset: args.offset + args.max_chars]
+    return {"id": clip["id"], "kind": clip["kind"], "text": text, "chars": clip["chars"],
+            "truncated": args.offset + args.max_chars < clip["chars"],
+            "source_app": clip["source_app"], "last_seen_at": clip["last_seen_at"]}
+
+
+def run_bundle(services: Services, args: BundleArgs) -> dict:
+    """Collect selected clips with their origins for one comparison or summary."""
+    if len(set(args.ids)) != len(args.ids):
+        raise ValueError("Pass each clip ID once.")
+    clips = []
+    for clip_id in args.ids:
+        clip = services.clips.get(clip_id)
+        if clip is None:
+            raise LookupError(f"Clip {clip_id} does not exist.")
+        if clip["sensitive"]:
+            raise PermissionError(f"Clip {clip_id} is hidden content; it cannot be included.")
+        text = clip["text"][:args.max_chars_per_clip]
+        clips.append({
+            "id": clip_id, "kind": clip["kind"], "text": text,
+            "chars": clip["chars"], "truncated": len(text) < clip["chars"],
+            "source_app": clip["source_app"], "source_title": clip["source_title"],
+            "last_seen_at": clip["last_seen_at"], "label": clip["label"],
+        })
+    return {"clips": clips, "count": len(clips)}
+
+
+def run_set(services: Services, args: SetArgs) -> dict:
+    clip = services.set_clipboard_text(args.text)
+    return {"ok": True, "clip": _public(clip)}
+
+
+def run_copy(services: Services, args: CopyArgs) -> dict:
+    clip = services.copy_clip(args.id, allow_sensitive=args.allow_sensitive)
+    return {"ok": True, "id": clip["id"], "kind": clip["kind"]}
+
+
+def run_pin(services: Services, args: PinArgs) -> dict:
+    if services.clips.get(args.id) is None:
+        raise LookupError(f"Clip {args.id} does not exist.")
+    patch: dict = {"pinned": args.pinned}
+    if args.label is not None:
+        patch["label"] = args.label
+    if args.tags is not None:
+        patch["tags"] = args.tags
+    return _public(services.clips.update(args.id, patch))
+
+
+def run_delete(services: Services, args: DeleteArgs) -> dict:
+    if not services.clips.soft_delete(args.id, services.now()):
+        raise LookupError(f"Clip {args.id} does not exist.")
+    return {"ok": True, "id": args.id}
+
+
+def run_status(services: Services, _: Empty) -> dict:
+    s = services.status()
+    keep = ("watching", "paused", "backend", "clips_count", "pinned_count", "sensitive_count", "images_bytes",
+            "last_capture_at", "retention_days", "max_clips", "max_image_mb", "ocr_enabled", "ocr_available", "exclude_apps")
+    return {k: s[k] for k in keep}
+
+
+def run_capture(services: Services, args: CaptureArgs) -> dict:
+    s = services.pause() if args.action == "pause" else services.resume()
+    return {"ok": True, "watching": s["watching"], "paused": s["paused"]}
+
+
+TOOLS: list[Tool] = [
+    Tool("clip_recent", "Recently copied clips, newest first, optionally since '1h'/'hoy'. Keywords: qué copié, portapapeles.\nThe user's most recently copied clips (newest first): kind, preview, source app, when, how many times copied, pinned, label. A sensitive clip comes back with preview `[oculto]`, never the real content.\nSinónimos: portapapeles, últimas copias, qué he copiado, historial del portapapeles, lo último que copié.", RecentArgs, ann(True), run_recent),
+    Tool("clip_search", "Search copied text and image OCR. Keywords: buscar copiado, texto en captura.\nFull-text search over clipboard history (text, optional image OCR, label, tags, source window title), diacritics-insensitive. OCR is derived and may contain recognition mistakes. Sensitive clips never surface real content, only `[oculto]`.\nSinónimos: buscar en el portapapeles, texto de imagen copiada, busca la url que copié.", SearchArgs, ann(True), run_search),
+    Tool("clip_get", "Full text of one clip by id (paginated). Keywords: ver clip, texto completo, contenido copiado.\nThe full text of one clip (paginated with max_chars/offset for very long clips). Refuses outright when the clip is flagged sensitive.\nSinónimos: dame el texto completo, pégame lo que copié, contenido completo de la copia.", GetArgs, ann(True), run_get),
+    Tool("clip_bundle", "Read selected clips together with source and date. Keywords: compare clips, comparar recortes.\nPass IDs from clip_recent or clip_search; returns their texts in the requested order with source app, window title and timestamp, ready to compare or summarise in one chat turn. Each text may be truncated; use clip_get with an offset for the rest.\nSinónimos: compara estas copias, resume estos enlaces, junta estos recortes, analiza estos clips.", BundleArgs, ann(True), run_bundle),
+    Tool("clip_set", "Put text on the clipboard and store it as a clip (write). Keywords: cópiame esto, ponlo en el portapapeles.\nPut text on the user's clipboard and store it as a clip (write, idempotent by content). Use when the user says 'cópiame esto' or 'ponlo en el portapapeles'; always tell them plainly what you put there.\nSinónimos: cópiame esto, ponlo en el portapapeles, copia esto, pon esto en el portapapeles, pásame esto al portapapeles.", SetArgs, ann(False, False, True), run_set),
+    Tool("clip_copy", "Put an existing clip back on the clipboard by id (write). Keywords: vuelve a copiar, recuperar clip.\nPut an existing clip back on the user's clipboard by id (write). Refuses a sensitive clip unless `allow_sensitive` is true, and even then never returns the content to you.\nSinónimos: pégame el anterior, vuelve a copiar esto, copia ese de nuevo, recupera esa copia, ponlo otra vez en el portapapeles.", CopyArgs, ann(False, False, True), run_copy),
+    Tool("clip_pin", "Pin or unpin a clip and optionally set its label/tags (write). Only when the user asks.\nSinónimos: fija esta copia, guarda esto, marca como favorito, etiqueta esta copia, quita de fijados.", PinArgs, ann(False, False, True), run_pin),
+    Tool("clip_delete", "Forget one clip (write, destructive; soft-deleted with a 24h undo window before it is purged for good).\nSinónimos: borra esta copia, olvida esto, elimina del portapapeles, quita esta copia.", DeleteArgs, ann(False, True, True), run_delete),
+    Tool("clip_status", "Is Echo watching the clipboard? Counts, storage and retention. Keywords: estado, portapapeles, retención.\nWhether Echo is watching the clipboard, counts of clips/pinned/sensitive, image storage used, retention configuration.\nSinónimos: estado del portapapeles, está vigilando, cuántas copias tengo, está en pausa.", Empty, ann(True), run_status),
+    Tool("clip_capture", "Pause or resume clipboard watching (write). Only when the user explicitly asks for it.\nSinónimos: pausa el portapapeles, deja de copiar, reanuda el portapapeles, vuelve a vigilar el portapapeles.", CaptureArgs, ann(False, False, True), run_capture),
+]
+
+TOOLS_BY_NAME = {tool.name: tool for tool in TOOLS}
+
+
+def tool_catalog() -> list[dict]:
+    return catalog_of(TOOLS)
+
+
+def call_tool(services: Services, name: str, arguments: dict | None, *, cap: bool = True):
+    """Run one tool. Expected failures keep the statuses Echo always answered with (403 hidden content, 404 no such
+    clip, 400 bad input); the shared agent kit validates the arguments and caps the size of the answer."""
+    try:
+        return run_tool(TOOLS_BY_NAME, services, name, arguments, cap=cap)
+    except PermissionError as error:
+        raise AppError("forbidden", str(error), status=403) from error
+    except LookupError as error:
+        if isinstance(error, KeyError):  # an unknown tool: the router answers 404 unknown_tool itself
+            raise
+        raise AppError("not_found", str(error), status=404) from error

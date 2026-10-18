@@ -1,0 +1,364 @@
+# DiskHoard
+
+[English](README.md)
+
+## Copilot de Faustus
+
+El botón Faustus abre el panel común en todas las vistas. Recibe el escaneo,
+la carpeta comprobada, los ficheros seleccionados y los valores sin enviar de
+los formularios de escaneo, ZIP y copias de Ollama. Faustus conserva los chats,
+borradores y herramientas; el relay usa sólo la biblioteca estándar y deja
+las credenciales en el servidor. Cada carpeta de datos conserva su identidad
+y cada raíz escaneada su conversación. Al acabar un turno se actualizan los
+resultados y se conservan los formularios abiertos. [Contrato API y contexto](docs/copilot.md).
+
+Analizador y limpiador de disco para Windows. Escanea el árbol que le digas, te enseña
+**cuánto pesa cada carpeta por nivel**, te dice **dónde se concentra el peso de verdad** y
+te deja borrar desde la propia interfaz.
+
+Nace de un problema concreto: tener cientos de gigas ocupados sin saber en qué, y acabar
+abriendo *Propiedades* carpeta por carpeta, bajando un nivel cada vez que aparece una
+gorda. El explorador de Windows sabe la respuesta pero no te la da.
+
+Sin dependencias: Python 3 de la librería estándar y el navegador que ya tienes. Incluido
+el servidor MCP: cualquier asistente (Faustus, Claude Desktop, Cursor…) puede escanear,
+explicarte qué es cada carpeta y limpiar por ti, con las mismas reglas de seguridad.
+
+![Explorador](docs/explorador.jpg)
+
+## Uso
+
+Doble clic en `DiskHoard.bat`. Se abre el navegador en `127.0.0.1`.
+
+1. Eliges punto de partida: una unidad entera, un atajo (Escritorio, Descargas, AppData…)
+   o una carpeta: «Examinar…» abre el selector de carpetas de Windows y escanea la que
+   elijas (también se puede pegar la ruta). Los campos de ruta de los ZIP tienen el mismo botón.
+2. Escanea.
+3. Navegas por niveles. Cada fila lleva su barra de peso, su tamaño, el porcentaje que se
+   lleva de la carpeta actual, cuántos ficheros contiene y cuándo se tocó por última vez.
+
+El último escaneo terminado se guarda en `data/last-scan.pkl.gz` (solo carpetas, comprimido)
+y se carga al arrancar: tras un reinicio no hace falta volver a recorrer la unidad entera.
+Las herramientas del asistente avisan de su antigüedad (`snapshot.age_h`) y `disk_scan` lo
+refresca. `DISKHOARD_RESTORE=0` lo desactiva.
+
+`DiskHoard (admin).bat` hace lo mismo como administrador, para que no aparezcan carpetas
+del sistema marcadas como «sin permiso».
+
+También hay modo consola, sin navegador:
+
+```
+python selftest.py "C:\ruta\a\escanear"
+```
+
+## Qué enseña
+
+### Puntos calientes
+
+La respuesta directa a *«¿dónde están mis 300 GB?»*. No es un ranking de carpetas —eso
+repite abuelo, padre e hijo y no dice nada—, sino una **partición en trozos que no se
+solapan**: baja por cada rama mientras el peso se pueda atribuir a una subcarpeta
+concreta, y donde deja de poderse, para y lo apunta. Lo que queda repartido entre muchas
+cosas pequeñas se marca como «resto disperso».
+
+![Puntos calientes](docs/puntos-calientes.jpg)
+
+### Basura detectada
+
+Un catálogo de carpetas conocidas: `node_modules`, entornos virtuales, cachés de
+conda/pip/npm/Gradle/Maven, `target/` de Rust, `Library/` de Unity, intermedios de Unreal,
+modelos de Ollama, Hugging Face y LM Studio, cachés de agentes de IA (Claude Code, Codex, Cursor…), cachés de uv/Bun/Go/Flutter, shaders de la GPU,
+cachés de Spotify/Adobe/DaVinci, temporales de Windows, papelera, discos de Docker y WSL…
+
+Cada una viene con **qué es, si se puede borrar y cómo se regenera**, clasificada en tres
+niveles:
+
+| | |
+|---|---|
+| **Seguro de borrar** | se regenera solo (`npm install`, `cargo build`, la app rehace su caché) |
+| **Revisar antes** | pesado y recuperable, pero igual tardaste horas en bajarlo |
+| **No tocar** | `Windows\Installer`, `WinSxS`, `.git`, `pagefile.sys`… ni seleccionable |
+
+Las reglas usan marcadores para no dar falsos positivos: `target/` solo cuenta si hay un
+`Cargo.toml` al lado, `Library/` solo si hay un `Assets/`, `venv/` solo si contiene un
+`pyvenv.cfg`. Y algunas carpetas son cajones de sastre (`.cache`, `Descargas`,
+`LocalCache`): se informan pero se sigue bajando dentro, y no suman en el total
+recuperable para no contar dos veces.
+
+![Basura detectada](docs/basura.jpg)
+
+### Agentes de programación con IA
+
+Categoría **Agentes de IA** del catálogo, con las rutas reales de Windows:
+
+| Herramienta | Seguro (se regenera) | Revisar (pierdes historial o trabajo) |
+|---|---|---|
+| Claude Code (`~\.claude`) | `cache`, `debug`, `downloads`, `shell-snapshots`, `session-env`, `telemetry`, `usage-data`, `paste-cache`, `image-cache`, `stats-cache.json` | `projects`, `sessions`, `file-history` (conversaciones: sin `--resume`), `plans`, `backups`, `history.jsonl` |
+| Claude Desktop (`%APPDATA%\Claude`, `%LOCALAPPDATA%\claude-cli-nodejs\Cache`) | cachés de Chromium (`Cache`, `Code Cache`, `GPUCache`, `Dawn*Cache`, `GrShaderCache`, `GPUPersistentCache`, `ShaderCache`), `Crashpad`, `logs`, `sentry`, caché de la CLI | `claude-code-sessions`, `local-agent-mode-sessions`, `vm_bundles`, `claude-code-vm` y el `LocalCache` del paquete de la Store (su contenido se clasifica aparte) |
+| Codex (`~\.codex`) | `.tmp`, `tmp`, `cache`, temporales huérfanos `*.tmp-*` | `sessions`, `worktrees` (pueden tener trabajo sin commitear), `generated_images`, `attachments` |
+| Cursor (`%APPDATA%\Cursor`, `~\.cursor`) | las cachés de Chromium más `CachedData`, `CachedExtensionVSIXs`, `CachedProfilesData`; `statsig-cache.json.*.tmp` | `worktrees` (pueden tener trabajo sin commitear), `chats` |
+| VS Code (`%APPDATA%\Code`) | `Cache`, `CachedData`, `CachedExtensionVSIXs`, `CachedProfilesData`, cachés de Chromium, `logs` | |
+
+Lo que **no** se cataloga ni lo borra el agente (la interfaz lo marca «no tocar»): credenciales
+(`.credentials.json`, `auth.json`), `.claude.json`, ajustes y `config.toml`, `skills`, `plugins`, `ide`,
+agentes y comandos, `memories`, `rules`, `automations` y `sqlite` de Codex, `extensions`, `User`, `Backups` y
+`Workspaces` de Cursor, y `Local Storage`, `IndexedDB`, `Session Storage` y los `*.json` de Claude Desktop. Una
+carpeta que contenga alguno de ellos (por ejemplo `~\.claude`) tampoco se borra. Los ficheros sueltos
+(`history.jsonl`, temporales huérfanos) se leen en vivo de esas carpetas, porque el escaneo solo guarda carpetas.
+
+### Borrar: re-comprobación y esperado frente a liberado
+
+Cada borrado (`POST /api/delete`, `disk_delete`) vuelve a medir cada elemento justo antes de tocarlo: bytes,
+número de ficheros y fecha de modificación más reciente del árbol, sin seguir enlaces simbólicos ni junctions.
+La referencia es lo que dijo el escaneo (carpetas) o lo que se le enseñó al usuario (ficheros sueltos: lista de
+basura, listado de carpeta, `disk_find`, `disk_explain`). Si ya no cuadra, **ese elemento no se borra**: vuelve
+en `changed` con las cifras de antes y de ahora y `hint: "rescan"`. Se hace `disk_rescan` (o «Reescanear» en el
+diálogo), se mira el tamaño nuevo y se reintenta. `force=true` se salta la comprobación, solo si el usuario
+insiste. Un elemento sin ninguna referencia (nunca escaneado ni listado) se borra y queda con `verified: false`.
+
+El resultado separa lo esperado de lo liberado:
+
+- `expected_bytes`: lo que decía el escaneo de lo que se ha borrado; `freed_bytes`: lo medido;
+  `difference_bytes`: liberado menos esperado. Por elemento, en `items` (`status`: `deleted`, `partial`,
+  `changed`, `error`).
+- Borrado definitivo: `freed_on_disk_bytes` es lo liberado. Papelera: `moved_to_bin_bytes` es lo movido,
+  `freed_on_disk_bytes` queda en 0 y el espacio del disco solo vuelve al vaciar la papelera. El diálogo del
+  resultado lo dice.
+
+### Mapa
+
+Treemap de la carpeta actual: el área de cada rectángulo es lo que ocupa. Clic para
+entrar.
+
+![Mapa](docs/mapa.jpg)
+
+### Y además
+
+- **Ficheros grandes** — los 500 más pesados del escaneo, con nota para los sospechosos
+  habituales (`hiberfil.sys`, `pagefile.sys`, `.vhdx`, copias `.blend1` de Blender).
+- **Por tipo** — en qué se te va el disco por categoría: vídeo, modelos de IA, discos
+  virtuales, comprimidos, código…
+- **Sin tocar** — carpetas de más de 1 GB cuyo fichero más reciente tiene más de un año.
+
+## Borrado
+
+Seleccionas con las casillas y decides:
+
+- **Mover a la papelera** — reversible, vía `SHFileOperation` con `FOF_ALLOWUNDO`.
+- **Borrar definitivamente** — no pasa por la papelera. Rápido e irreversible. Nunca entra por un enlace: un enlace simbólico o una junction dentro de lo que se borra (o pasado tal cual) se quita como enlace y su destino queda intacto.
+- **Generar script** — un `.ps1` comentado que revisas y ejecutas tú, con soporte de
+  `-WhatIf` para ver qué haría sin tocar nada.
+
+Nada se borra sin confirmación explícita en un diálogo que lista lo seleccionado y avisa
+si hay algo marcado como «no tocar». Tras borrar, **⟳ esta carpeta** vuelve a leer solo
+ese subárbol en un par de segundos y te dice cuánto ha cambiado.
+
+## Partir en ZIPs
+
+Pestaña **Partir en ZIPs** (también en la pantalla de inicio, el botón «Partir en ZIPs…» de la barra de la
+carpeta y el de la selección): convierte una carpeta en `part_001.zip`, `part_002.zip`… y **ninguno pasa del
+límite**, para webs que limitan el tamaño por fichero. Sustituye al antiguo «Zip splitter» de Tkinter.
+
+- **Límite**: `990mb` (decimal, 1 MB = 1.000.000 bytes, lo que cuentan las webs), `990mib` (binario) o bytes
+  sueltos. Atajos: 25 MB (correo), 100 MB, 500 MB, 990 MB, 2 GB y 4 GB. Margen por defecto: 5 MB.
+- **El límite se garantiza, no se estima**: antes de añadir un fichero se suma el tamaño real del archivo en curso
+  + el fichero + cabecera local + entrada del directorio central + registro final (con los extras ZIP64 cuando
+  hacen falta: ficheros o partes de más de 2 GiB, más de 65535 entradas) y, en deflate, la cota de crecimiento de
+  zlib. Al cerrar cada parte se mide y se comprueba contra el límite. Con «Sin comprimir» el plan coincide byte a
+  byte con el resultado; con Deflate el plan es un máximo.
+- **Estructura**: las rutas dentro del ZIP son relativas a la carpeta de origen, con `/` y nombres UTF-8.
+  Las carpetas vacías no se incluyen; los enlaces simbólicos y uniones no se siguen.
+- **Orden**: por nombre o por tamaño (pequeños primero). **Compresión**: sin comprimir (por defecto) o deflate.
+- **Incluir / excluir** con patrones (`*.jpg`, `node_modules`, `fotos/*`). Por defecto se excluye
+  `Thumbs.db, desktop.ini, .DS_Store, *.tmp, ~$*`; una lista de exclusión explícita (aunque sea vacía) sustituye
+  a esa. La carpeta de salida nunca se empaqueta.
+- **Un fichero mayor que el límite** (`too_large`): `skip` saltarlo (por defecto para el asistente), `fail` negarse
+  a empezar, `split` guardarlo solo en un ZIP cortado en volúmenes crudos `<prefijo>_<nombre>.zip.001`, `.002`…
+  (cada uno dentro del límite; 7-Zip abre el `.001`; en Windows se unen con
+  `copy /b "x.zip.001"+"x.zip.002" "x.zip"`) o `move` (**mueve** el original a `too_large/` dentro de la salida:
+  pide confirmación).
+- **Plan en seco** («Calcular plan»): qué fichero va a qué parte, tamaño estimado de cada una y la lista de
+  demasiado grandes, sin escribir nada.
+- **Salida**: `<origen>_zips` junto al origen por defecto; nunca dentro del origen. Debe estar vacía o ser nueva,
+  salvo `overwrite`, que solo sustituye partes con el mismo prefijo. No escribe en raíces de unidad, `Windows`,
+  `Archivos de programa` ni la raíz del perfil, y un origen que sea una unidad entera pide confirmación.
+  `manifest.txt` (opcional, activado) lista cada parte con sus ficheros.
+- **Trabajo en segundo plano** con progreso (bytes, fichero actual, parte), cancelación y resumen con el tamaño
+  real de cada parte. Las partes se escriben como `.tmp` y se renombran al cerrarse: si se cancela o falla no
+  queda ninguna a medias (las ya cerradas se conservan). Solo hay un trabajo a la vez.
+- Si un fichero no se puede leer, se salta y se anota; si falla la lectura a mitad de un fichero, el trabajo se
+  detiene y borra la parte en curso.
+
+Rutas HTTP (mismo token que el resto de `/api`): `POST /api/zip/plan`, `POST /api/zip/split`,
+`GET /api/zip/job?id=` (sin `id`, el último) y `POST /api/zip/cancel`. Los errores devuelven 400 con `error`.
+
+## Copias de Ollama
+
+Desde Ollama 0.40 un modelo se actualiza en segundo plano la primera vez que se ejecuta y la versión original se conserva como copia de seguridad. La pestaña **Copias de Ollama** (y el botón de la pantalla de inicio) busca en la carpeta de modelos lo que se puede liberar, dice si cada modelo sigue funcionando sin ello y libera solo lo seguro.
+
+- **Qué encuentra:** `ggml_backup` (el build previo a la migración de un modelo cuyo build migrado existe), `orphan_blob` (blobs que ningún manifiesto usa), `partial` (descargas `-partial` abandonadas), `orphan_metadata` (caché de metadatos de un blob que ya no está) y `backup_dir` / `backup_file` (carpetas como `blobs.old` o `manifests.bak-*` de una migración manual). Cada elemento trae su tamaño, el modelo al que pertenece si se sabe y los motivos por los que es seguro o no.
+- **Seguro significa verificado:** una copia solo es segura si el manifiesto del build migrado y todos sus blobs existen con el tamaño que declara el manifiesto, y los blobs de la copia no los comparte ningún otro modelo. Los huérfanos deben tener más de una hora (los parciales abandonados, una semana) y el almacén no puede haberse escrito en los últimos dos minutos. Un manifiesto ilegible, un enlace roto, un digest raro o una ruta no verificable vuelve inseguros todos los huérfanos, y lo inseguro nunca se ofrece para borrar.
+- **Carpeta de modelos:** `OLLAMA_MODELS`, luego la del servidor en marcha, luego `~/.ollama/models`; una carpeta que no parece un almacén de Ollama se rechaza.
+- **Liberar:** por defecto es una simulación que enseña el plan con los comandos `ollama rm <digest>` exactos. La ejecución real exige confirmación explícita y manda a la Papelera (ficheros) o, si lo eliges, borra definitivamente. Una copia que es una entrada de manifiesto se elimina con `ollama rm`, nunca editando los manifiestos de Ollama (es irreversible y necesita el servidor en marcha). Se niega mientras Ollama tenga modelos cargados, haya un proceso pull / run / create / push activo o no se pueda verificar la carpeta, y vuelve a escanear después para comprobar lo eliminado.
+- **Registro:** cada simulación, rechazo y liberación se anota en `data/ollama-free-audit.jsonl` (cuándo, modo, origen `ui` / `agent`, resultado, bytes); la interfaz lo enseña en «Registro».
+
+HTTP: `GET /api/ollama/backups?dir=`, `GET /api/ollama/audit?limit=`, `POST /api/ollama/free` (cuerpo `ids`, `dir`, `dry_run`, `confirm`, `mode`). MCP: `disk_ollama_backups` (solo lectura) y `disk_ollama_free` (simulación por defecto; `confirm=true` para aplicar).
+
+## Control por agente (MCP)
+
+`mcp_server.py` es un servidor MCP por stdio, también sin dependencias. Expone 20
+herramientas que reenvía a la app en marcha (y si no está en marcha, la arranca):
+
+| Herramienta | Qué hace |
+|---|---|
+| `disk_drives` | unidades con espacio usado/libre y atajos |
+| `disk_scan` / `disk_status` | escanea una carpeta o unidad (espera a que acabe) / progreso |
+| `disk_dir` | contenido de una carpeta del escaneo, de mayor a menor, con etiqueta de basura |
+| `disk_hotspots` | los puntos calientes, sin solapes |
+| `disk_junk` | basura conocida filtrada por seguridad, categoría o tamaño, con totales |
+| `disk_stale` / `disk_top_files` / `disk_types` | sin tocar, ficheros grandes, por tipo |
+| `disk_find` | buscar ficheros por patrón, tamaño o antigüedad en cualquier carpeta |
+| `disk_explain` | qué es una carpeta o fichero, si se puede borrar y por qué |
+| `disk_script` | genera y guarda el `.ps1` de limpieza (`-WhatIf`) sin tocar nada |
+| `disk_delete` | borra: a la papelera por defecto; definitivo solo con `mode="permanent"` y `confirm=true`. Re-mide cada elemento antes (`changed` + pista `rescan`; `force=true` para forzar) y devuelve `expected_bytes` frente a `freed_bytes` |
+| `disk_rescan` | vuelve a leer una subcarpeta y empalma los números |
+| `disk_zip_plan` | plan en seco para partir una carpeta en ZIPs de un tamaño máximo: partes, tamaños y ficheros demasiado grandes |
+| `disk_zip_split` | crea los ZIPs (`part_001.zip`…) garantizando el límite; `too_large`: `skip`, `fail`, `split` (volúmenes `.zip.001`) o `move` (con `confirm=true`); espera al final o devuelve un trabajo |
+| `disk_zip_status` / `disk_zip_cancel` | progreso y resumen del trabajo de ZIPs / cancelarlo sin dejar partes a medias |
+| `disk_ollama_backups` | copias que Ollama guarda tras migrar modelos y blobs huérfanos, con tamaños y qué es seguro liberar (solo lectura) |
+| `disk_ollama_free` | libera lo marcado como seguro: simulación por defecto, `confirm=true` para aplicar, Papelera o `mode="permanent"`; se niega si Ollama está ocupado |
+
+Partir en ZIPs no borra nada: solo lee el origen y escribe en la carpeta de salida (que debe estar vacía o ser
+nueva). `too_large="move"` es lo único que toca el origen, y exige `confirm=true`.
+
+Lo que un agente **nunca** puede borrar, diga lo que diga: raíces de unidad, el perfil de
+usuario y sus carpetas principales, `Windows`, `Archivos de programa`, `ProgramData` y todo lo
+que el catálogo marca como «no tocar» (`.git`, `WinSxS`, `Windows\Installer`…). Dentro de
+`Windows` solo pasa lo que el catálogo conoce como seguro (descargas de Windows Update,
+volcados, logs de CBS).
+
+Todo lo que hace el agente queda en un registro que la interfaz enseña en la cabecera
+(«MCP · delete · …»); clic para ver la lista. Si el agente escanea otra raíz o borra algo,
+la interfaz lo sigue sola.
+
+Configuración para un cliente MCP genérico (Claude Desktop, Cursor…):
+
+```json
+{ "mcpServers": { "diskhoard": { "command": "python", "args": ["C:\\ruta\\DiskHoard\\mcp_server.py"] } } }
+```
+
+Variables opcionales: `DISKHOARD_URL` (por defecto `http://127.0.0.1:8817`),
+`DISKHOARD_DATA_DIR` (token, url y scripts generados; por defecto `data/`),
+`DISKHOARD_AUTOSTART=0` para que el puente no arranque la app por su cuenta.
+
+### Como plugin de Faustus
+
+El repo lleva `faustus-plugin.json`: con DiskHoard en marcha, Faustus la ve en el puerto
+8817, ofrece conectarla con el formulario relleno, y usa su propio Python para el puente
+(no hace falta entorno virtual). Desde el chat: «¿dónde se me va el disco?», «limpia lo
+seguro de `D:\proyectos`», «¿qué es esta carpeta?».
+
+La app también se puede arrancar a mano en el puerto que quieras:
+`python -m diskhoard --port 8817 --no-browser`. `/api/health` responde sin token.
+
+### En la familia (Hoard Hub)
+
+DiskHoard sigue el contrato de la familia de Hoards: `GET /api/agent/tools` y `POST /api/agent/call`
+aceptan también `Authorization: Bearer <data/mcp-token>` (lo que envían el proxy del Hoard Hub y los
+puentes MCP, además del `X-DH-Token` / `?t=` de la interfaz); `/api/health` lleva el bloque `hoard_link`;
+y cada llamada de agente se anota en el bus del hub como `agent.call` (`HOARD_EVENTS=0` lo silencia,
+`HOARD_HUB_URL` cambia el hub). La librería va vendida en `diskhoard/hoard_link/` (solo librería
+estándar, como el resto de la app) y se refresca con `scripts/sync_vendored.py` del repositorio del hub.
+De ella salen también la guardia de peticiones (`guard.check_request`: Host, Origin y Fetch Metadata en
+cada petición, `DISKHOARD_ALLOWED_HOSTS` abre un nombre de red local a propósito), el token
+(`tokens.read_or_create_token`), el reemplazo atómico con reintentos en Windows de la instantánea del
+último escaneo y de las partes ZIP (`atomic.replace_with_retry`) y el botón «abrir en el explorador»
+(`proc.reveal_in_file_manager`).
+
+## Atajos
+
+| Tecla | Acción |
+|---|---|
+| Retroceso | subir un nivel |
+| Supr | mover la selección a la papelera |
+| Ctrl+A | seleccionar todo en la carpeta actual |
+| Esc | limpiar selección / cerrar diálogo |
+
+## Cómo funciona por dentro
+
+- **Escaneo multihilo con `os.scandir`.** En Windows la enumeración de un directorio ya
+  devuelve los metadatos de cada entrada, así que `entry.stat()` no cuesta una llamada
+  extra al sistema. De ahí la diferencia de velocidad con el explorador.
+- **En memoria solo viven los directorios** (tamaño acumulado, número de ficheros, fecha
+  más reciente). Los ficheros de una carpeta se listan en vivo al entrar, que es
+  instantáneo y siempre está al día después de borrar.
+- **Los tamaños se agregan en un recorrido post-orden iterativo**, no recursivo: hay
+  árboles de `node_modules` que revientan la pila.
+- **Rutas largas con prefijo `\\?\`** en todo el escaneo, porque `node_modules` pasa de
+  260 caracteres constantemente. (Ojo: `SHFileOperation` no acepta ese prefijo, así que la
+  papelera trabaja con la ruta normal.)
+- **No se siguen *junctions* ni enlaces simbólicos.** Si se siguen, el mismo contenido se
+  cuenta varias veces y los totales mienten.
+- **Servidor local** con `http.server`, escuchando solo en `127.0.0.1` y con un token que
+  se genera una vez y se guarda en `data/mcp-token`: la página lo recibe al cargarse
+  (en la URL o, si se abre sin él desde el Hub o un marcador, inyectado en el HTML tras pasar la
+  guardia de Host / Origin) y el
+  puente MCP lo lee del fichero. La interfaz entera es un único fichero HTML sin
+  dependencias externas.
+- **El puente MCP no sabe de discos.** Habla JSON-RPC por stdin/stdout y reenvía cada
+  llamada por HTTP; el catálogo de herramientas vive en `diskhoard/agent.py`, el mismo
+  módulo que las ejecuta, así que no pueden discrepar.
+
+### Rendimiento
+
+Medido en un NVMe con Windows 11:
+
+| Objetivo | Tamaño | Ficheros | Carpetas | Tiempo |
+|---|---|---|---|---|
+| `C:\` completo | 1,54 TB | 3,72 M | 677 k | 56 s |
+| Perfil de usuario | 1,17 TB | 2,88 M | 463 k | 33 s |
+
+Unos 50-90 k ficheros por segundo según lo caliente que esté la caché del sistema.
+
+## Estructura
+
+```
+DiskHoard/
+├── DiskHoard.bat          arranque normal
+├── DiskHoard (admin).bat  arranque como administrador
+├── selftest.py            modo consola
+├── mcp_server.py          servidor MCP (stdio) para agentes
+├── faustus-plugin.json    manifiesto para conectarla a Faustus
+├── tests/                 pytest: herramientas del agente, puente MCP y partir en ZIPs
+└── diskhoard/
+    ├── scanner.py         motor de escaneo multihilo
+    ├── junk.py            catálogo de basura + puntos calientes
+    ├── winfs.py           rutas largas, unidades, papelera, borrado
+    ├── agent.py           catálogo de herramientas del agente y reglas de borrado
+    ├── zipsplit.py        partir carpetas en ZIPs con límite garantizado (lógica pura)
+    ├── server.py          servidor HTTP local + API
+    ├── hoard_link/        librería de la familia (vendida): guardia de peticiones, token, escritura atómica, explorador, eventos al hub, bloque de salud
+    └── web/index.html     interfaz entera en un fichero
+```
+
+Tests: `python -m pytest -q tests` (solo necesita pytest).
+
+## Limitaciones
+
+- Solo Windows. El motor de escaneo es portable, pero la papelera y la enumeración de
+  unidades usan la API de Windows.
+- La interfaz está solo en castellano.
+- Copias de Ollama se basa en la estructura de Ollama 0.40 (listas de manifiestos con builds `ggml` y `llamacpp`) reconstruida a partir de sus notas de versión; con versiones anteriores solo detecta huérfanos y carpetas de copia. Una copia `ggml` se elimina con `ollama rm` y exige el servidor en marcha.
+- Partir en ZIPs no incluye carpetas vacías, no sigue enlaces simbólicos ni uniones y no cifra ni protege con
+  contraseña. Con Deflate el plan es un máximo y el resultado puede salir en menos partes; un fichero modificado
+  mientras se lee se guarda con el tamaño que tenía al empezar (y se avisa).
+- Los tamaños son lógicos, no *tamaño en disco*: no tiene en cuenta compresión NTFS,
+  ficheros dispersos ni el tamaño de clúster.
+
+## Licencia
+
+MIT. Ver [LICENSE](LICENSE).
+
+## Navegación del mapa de disco
+
+El treemap admite teclado: Tab entra en una celda, las flechas seleccionan la celda próxima en esa dirección, Enter o Espacio abren una carpeta o muestran los datos de un archivo, y Retroceso vuelve al padre. Cada celda anuncia nombre y tamaño. La navegación conserva los controles de confirmación de borrado existentes.

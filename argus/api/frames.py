@@ -1,0 +1,149 @@
+"""Timeline, frame detail and images, search, activity by app, days, range deletion."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
+from fastapi.responses import FileResponse
+
+from ..visual import VisualUnavailable
+from .deps import epoch_range, services
+
+router = APIRouter(prefix="/api")
+
+
+class PinBody(BaseModel):
+    pinned: bool
+
+
+@router.get("/timeline")
+def timeline(
+    request: Request,
+    from_: str | None = Query(None, alias="from"),
+    to: str | None = None,
+    app: str | None = Query(None, max_length=200),
+    q: str | None = Query(None, max_length=300),
+    limit: int = Query(60, ge=1, le=500),
+    cursor: float | None = None,
+    order: str = Query("desc", pattern="^(asc|desc)$"),
+    title: str | None = Query(None, max_length=1000),
+):
+    lo, hi = epoch_range(from_, to)
+    result = services(request).queries.timeline(lo, hi, app, q, limit, cursor, ascending=order == "asc", title=title)
+    for frame in result["frames"]:
+        frame.pop("_ts", None)
+    return result
+
+
+@router.get("/sessions")
+def sessions(
+    request: Request,
+    day: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    from_: str | None = Query(None, alias="from"),
+    to: str | None = None,
+    app: str | None = Query(None, max_length=200),
+):
+    if not day and not from_ and not to:
+        raise HTTPException(400, "Give a day (YYYY-MM-DD) or a from/to range.")
+    lo, hi = epoch_range(from_, to)
+    items = services(request).queries.sessions(day, lo, hi, app)
+    return {"sessions": items, "total_seconds": round(sum(s["duration_s"] for s in items)), "frames": sum(s["count"] for s in items)}
+
+
+@router.get("/frames/{frame_id}")
+def frame(request: Request, frame_id: int, blocks: bool = True):
+    svc = services(request)
+    data = svc.queries.frame(frame_id, with_blocks=blocks)
+    if data is None:
+        raise HTTPException(404, "Frame not found.")
+    return {**data, **svc.queries.neighbours(frame_id)}
+
+
+@router.patch("/frames/{frame_id}/pin")
+def pin_frame(request: Request, frame_id: int, body: PinBody):
+    svc = services(request)
+    if not svc.frames.set_pinned(frame_id, body.pinned):
+        raise HTTPException(404, "Frame not found.")
+    return {"ok": True, "id": frame_id, "pinned": body.pinned}
+
+
+def _file(request: Request, frame_id: int, thumb: bool):
+    info = services(request).frames.image_file(frame_id)
+    if info is None:
+        raise HTTPException(404, "Frame not found.")
+    path = info[1] if thumb else info[0]
+    if not path.exists():
+        raise HTTPException(404, "Image file is missing.")
+    return FileResponse(path, media_type="image/webp", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@router.get("/frames/{frame_id}/image")
+def frame_image(request: Request, frame_id: int):
+    return _file(request, frame_id, thumb=False)
+
+
+@router.get("/frames/{frame_id}/thumb")
+def frame_thumb(request: Request, frame_id: int):
+    return _file(request, frame_id, thumb=True)
+
+
+@router.get("/search")
+def search(
+    request: Request,
+    q: str = Query(..., min_length=1, max_length=300),
+    from_: str | None = Query(None, alias="from"),
+    to: str | None = None,
+    app: str | None = Query(None, max_length=200),
+    limit: int = Query(50, ge=1, le=200),
+    mode: str = Query("both", pattern="^(text|visual|both)$"),
+):
+    """`mode`: text = OCR/titles/apps only, visual = how the screen looked (image embeddings), both = fused by rank (falls back to
+    text while there is no visual index). Hits carry `via` and `visual_score` when the visual side took part."""
+    lo, hi = epoch_range(from_, to)
+    try:
+        return services(request).search(q, lo, hi, app, limit, mode)
+    except VisualUnavailable as error:
+        raise HTTPException(409, str(error)) from error
+
+
+@router.get("/frames/{frame_id}/similar")
+def similar_frames(
+    request: Request,
+    frame_id: int,
+    from_: str | None = Query(None, alias="from"),
+    to: str | None = None,
+    app: str | None = Query(None, max_length=200),
+    limit: int = Query(30, ge=1, le=100),
+    same_moment: bool = False,
+):
+    """Moments whose screen looks like this frame (the moment it belongs to is left out unless `same_moment`)."""
+    lo, hi = epoch_range(from_, to)
+    try:
+        return services(request).visual.similar(frame_id, limit, lo, hi, app, same_moment)
+    except VisualUnavailable as error:
+        raise HTTPException(409, str(error)) from error
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+
+
+@router.get("/apps")
+def apps(request: Request, from_: str | None = Query(None, alias="from"), to: str | None = None):
+    lo, hi = epoch_range(from_, to)
+    return services(request).queries.apps(lo, hi)
+
+
+@router.get("/days")
+def days(request: Request):
+    return {"days": services(request).queries.days()}
+
+
+@router.delete("/frames")
+def delete_frames(request: Request, from_: str = Query(..., alias="from"), to: str = Query(...)):
+    lo, hi = epoch_range(from_, to)
+    deleted = services(request).janitor.delete_range(lo, hi)
+    return {"ok": True, "deleted": deleted}
+
+
+@router.post("/janitor")
+def run_janitor(request: Request):
+    return services(request).janitor.run()

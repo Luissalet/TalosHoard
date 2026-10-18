@@ -1,0 +1,4308 @@
+[
+  {
+    "name": "screen_status",
+    "description": "Is Argus recording? State, OCR queue, last capture, disk and retention. Keywords: estado, grabando, pausado.\nWhether Argus is recording (watching, paused, private or disabled), OCR queue depth, last capture, disk usage and retention.\nSinónimos: estado, pantalla, está grabando, pausa, modo privado, espacio en disco.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_search",
+    "description": "Search the screen history by text or by how it looked. Keywords: buscar en pantalla, qué vi, gráfica azul.\nText side: OCR, window titles and app names, BM25 (title weighs most). Visual side (`mode` visual or both, default both): a description like 'la gráfica azul' or 'código en fondo oscuro' finds the screen; hits carry `via` and `visual_score`. Each hit is a moment: near-identical frames of one window folded (first_at, last_at, count, frame_ids best first; `id` is that frame). Best first step for 'that error I saw'.\nSinónimos: buscar, pantalla, error que vi, texto que vi, dónde leí, ventana, aplicación, ayer, hace un rato.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "q": {
+          "description": "Words to find in the OCR text (all must appear; last word matches as prefix). With mode visual or both it can also describe what the screen looked like, in Spanish or English.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Q",
+          "type": "string"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "To"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict to one process name, e.g. 'chrome' or 'code'.",
+          "title": "App"
+        },
+        "limit": {
+          "default": 20,
+          "description": "How many moments to return (a moment folds consecutive near-identical frames of one window).",
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "mode": {
+          "default": "both",
+          "description": "text = OCR, titles and apps only; visual = how the screen looked (image embeddings); both = fused by rank (text only while no visual index exists).",
+          "enum": [
+            "text",
+            "visual",
+            "both"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "q"
+      ],
+      "title": "SearchArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_similar",
+    "description": "Screens that look like a given frame (visual similarity). Keywords: parecido, similar, captura.\nMoments whose screen looks like the frame `id` (image embeddings, CPU), best first, without the moment the frame belongs to. Needs the visual index; use it for 'cuándo vi algo parecido a esto'.\nSinónimos: parecido a esta pantalla, captura similar, otra vez así, ventana igual, gráfica parecida, buscar por imagen.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Frame id from screen_search, screen_timeline or screen_recent.",
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 10,
+          "description": "How many moments.",
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "To"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict to one process name.",
+          "title": "App"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SimilarArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_timeline",
+    "description": "What was on screen during a period, newest first. Keywords: cronología, qué había en pantalla, secuencia.\nBrowse what was on screen during a period, newest first: consecutive frames of one app + window are folded into segments (from, until, duration, frames, excerpt), so a whole afternoon fits in one answer; group=false lists every frame; next_cursor pages further back. Use after screen_search/screen_recent when the user wants the sequence of events.\nSinónimos: línea de tiempo, qué estaba haciendo, cronología, historial de pantalla, ayer, esta mañana, hace 2 horas, aplicación, ventana.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "To"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict to one process name.",
+          "title": "App"
+        },
+        "limit": {
+          "default": 20,
+          "description": "How many entries (segments when grouped, frames otherwise).",
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "group": {
+          "default": true,
+          "description": "Merge consecutive frames of the same app and window into one segment (compact). false = every frame.",
+          "title": "Group",
+          "type": "boolean"
+        },
+        "cursor": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "next_cursor from a previous call, to continue further back in time.",
+          "title": "Cursor"
+        }
+      },
+      "title": "TimelineArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_frame_text",
+    "description": "Full OCR text of one frame (optionally its blocks with bounding boxes). Use ids returned by the other tools.\nSinónimos: texto completo, recuperar texto, captura, pantalla, leer la ventana.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Frame id from screen_search, screen_timeline or screen_recent.",
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "blocks": {
+          "default": false,
+          "description": "Include OCR blocks with bounding boxes.",
+          "title": "Blocks",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "FrameArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_pin_frame",
+    "description": "Pin or unpin a capture by id so automatic cleanup preserves it.\nAn explicit delete-range still removes pinned captures. Use only when the user asks to keep or unpin one.\nSinónimos: fijar captura, guardar pantalla, conservar captura, desfijar.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Frame id from screen_search, screen_timeline or screen_recent.",
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "pinned": {
+          "description": "True to keep the capture during automatic retention; false to restore normal cleanup.",
+          "title": "Pinned",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "pinned"
+      ],
+      "title": "PinArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_recent",
+    "description": "What the user was just looking at (last N minutes of OCR). Keywords: qué estaba haciendo, hace un rato, ahora.\nWhat the user was just looking at: OCR text of the last frames in the past N minutes, deduplicated, most recent first. Use for 'what was I doing', 'what did I just read', 'hace un rato'.\nSinónimos: qué estaba haciendo, hace un rato, ahora mismo, lo último que vi, pantalla actual, ventana, recuperar texto.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "minutes": {
+          "default": 10,
+          "description": "Look back this many minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Minutes",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 8,
+          "description": "Maximum distinct frames to return.",
+          "maximum": 50,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "RecentArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_activity",
+    "description": "Time spent per app and window in a period, with a summary. Keywords: actividad, cuánto tiempo, en qué apps.\nTime spent per app in a period, with the top window titles per app, the longest sessions (consecutive frames of one app + window) and a one-line human summary. Durations come from how long each frame stayed on screen.\nSinónimos: actividad, en qué he perdido el tiempo, cuánto tiempo, aplicación, ventana, hoy, ayer, esta semana, resumen del día.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End bound. ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "To"
+        }
+      },
+      "title": "RangeArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_days",
+    "description": "Days that have screen data, with frames, hidden ticks (excluded apps) and seconds on screen per day.\nSinónimos: días, qué días hay, historial, calendario, pantalla.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_pause",
+    "description": "Pause screen recording until resumed (only when asked). Keywords: pausar, deja de grabar, privado.\nPause recording until screen_resume is called (or the user resumes from the app). Only when the user asks for it.\nSinónimos: pausa, parar, deja de grabar, deja de mirar, pantalla.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_resume",
+    "description": "Resume recording (also leaves private mode). Only when the user asks for it.\nSinónimos: reanudar, continuar, vuelve a grabar, vuelve a mirar, pantalla.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_delete_range",
+    "description": "Permanently delete frames between two times (only when asked; no undo). Keywords: borrar, eliminar capturas.\nPermanently delete every frame (images and text) between two times. Only when the user explicitly asks; there is no undo.\nSinónimos: borrar, eliminar, olvidar, borra lo de ayer, borra esta tarde, privacidad, pantalla.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "from": {
+          "description": "Start bound (required). ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "description": "End bound (required). ISO datetime or a phrase such as 'hoy', 'ayer', 'hace 2 horas', 'esta mañana', 'today', '2 hours ago'.",
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "title": "DeleteRangeArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_import",
+    "description": "Import existing screenshots or folders for local OCR. Importar capturas guardadas.\nOriginal files remain unchanged; repeats reuse existing frames. Imports are pinned and do not imply observed screen activity. Sinónimos: importar imágenes, carpeta, archivo, capturas. Keywords: screenshots, folder, OCR, archive.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "paths": {
+          "description": "Existing screenshots or folders. Originals are read without modification.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Paths",
+          "type": "array"
+        },
+        "recursive": {
+          "default": false,
+          "description": "Include nested folders when importing a folder.",
+          "title": "Recursive",
+          "type": "boolean"
+        },
+        "app": {
+          "default": "Archivo importado",
+          "description": "Source label, not a claim that this app was active.",
+          "title": "App",
+          "type": "string"
+        },
+        "captured_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Known capture date/time. Omit to use the file modification date, explicitly labelled as such.",
+          "title": "Captured At"
+        }
+      },
+      "required": [
+        "paths"
+      ],
+      "title": "ScreenImportArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_import_list",
+    "description": "List imported screenshots with source and OCR status. Listar capturas importadas.\nUse next_before to continue, then screen_frame_text to read OCR. Sinónimos: imágenes importadas, archivo, biblioteca de capturas. Keywords: imported files, screenshots, image library.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "limit": {
+          "default": 60,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "before": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Continue at next_before from the previous page.",
+          "title": "Before"
+        }
+      },
+      "title": "ScreenImportListArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_import_watch",
+    "description": "Observe screenshot folders. Keywords: carpetas de capturas, importación automática.\nReplace folders, set recursion or check now; [] stops without deleting history. Files unchanged over two observations enter the existing OCR library; repeated source/SHA is deduplicated. Missing folders retry; private mode pauses observation. Sinónimos: observar carpeta, importar nuevas capturas, subcarpetas.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "folders": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Replace selected folders; [] stops watching. Originals remain untouched.",
+          "title": "Folders"
+        },
+        "recursive": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Include subfolders.",
+          "title": "Recursive"
+        },
+        "scan": {
+          "default": false,
+          "description": "Check now in addition to the background observer. Files must be unchanged over two observations.",
+          "title": "Scan",
+          "type": "boolean"
+        }
+      },
+      "title": "ImportWatchArgs",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "screen_import_watch_status",
+    "description": "Screenshot folder observation status. Keywords: carpetas, estado de importación, errores OCR.\nRead selected folders and the latest result without importing or changing settings. last_scan is the most recent check, not a cumulative total. Sinónimos: estado carpetas, importadas, esperando estabilidad.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "screen"
+  },
+  {
+    "name": "clip_recent",
+    "description": "Recently copied clips, newest first, optionally since '1h'/'hoy'. Keywords: qué copié, portapapeles.\nThe user's most recently copied clips (newest first): kind, preview, source app, when, how many times copied, pinned, label. A sensitive clip comes back with preview `[oculto]`, never the real content.\nSinónimos: portapapeles, últimas copias, qué he copiado, historial del portapapeles, lo último que copié.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "n": {
+          "default": 10,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "pattern": "^(text|url|email|path|code|number|image)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word (hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.",
+          "title": "Since"
+        }
+      },
+      "title": "RecentArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_search",
+    "description": "Search copied text and image OCR. Keywords: buscar copiado, texto en captura.\nFull-text search over clipboard history (text, optional image OCR, label, tags, source window title), diacritics-insensitive. OCR is derived and may contain recognition mistakes. Sensitive clips never surface real content, only `[oculto]`.\nSinónimos: buscar en el portapapeles, texto de imagen copiada, busca la url que copié.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "q": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Q",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "pattern": "^(text|url|email|path|code|number|image)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word (hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.",
+          "title": "Since"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict to one source process name.",
+          "title": "App"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "q"
+      ],
+      "title": "SearchArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_get",
+    "description": "Full text of one clip by id (paginated). Keywords: ver clip, texto completo, contenido copiado.\nThe full text of one clip (paginated with max_chars/offset for very long clips). Refuses outright when the clip is flagged sensitive.\nSinónimos: dame el texto completo, pégame lo que copié, contenido completo de la copia.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "description": "Clip id, as returned by clip_recent or clip_search.",
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "max_chars": {
+          "default": 8000,
+          "maximum": 50000,
+          "minimum": 1,
+          "title": "Max Chars",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Offset",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "GetArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_bundle",
+    "description": "Read selected clips together with source and date. Keywords: compare clips, comparar recortes.\nPass IDs from clip_recent or clip_search; returns their texts in the requested order with source app, window title and timestamp, ready to compare or summarise in one chat turn. Each text may be truncated; use clip_get with an offset for the rest.\nSinónimos: compara estas copias, resume estos enlaces, junta estos recortes, analiza estos clips.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "ids": {
+          "description": "Clip IDs in the order the user wants to compare or summarise.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        },
+        "max_chars_per_clip": {
+          "default": 8000,
+          "maximum": 20000,
+          "minimum": 1,
+          "title": "Max Chars Per Clip",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "title": "BundleArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_set",
+    "description": "Put text on the clipboard and store it as a clip (write). Keywords: cópiame esto, ponlo en el portapapeles.\nPut text on the user's clipboard and store it as a clip (write, idempotent by content). Use when the user says 'cópiame esto' or 'ponlo en el portapapeles'; always tell them plainly what you put there.\nSinónimos: cópiame esto, ponlo en el portapapeles, copia esto, pon esto en el portapapeles, pásame esto al portapapeles.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "text": {
+          "maxLength": 200000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "SetArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_copy",
+    "description": "Put an existing clip back on the clipboard by id (write). Keywords: vuelve a copiar, recuperar clip.\nPut an existing clip back on the user's clipboard by id (write). Refuses a sensitive clip unless `allow_sensitive` is true, and even then never returns the content to you.\nSinónimos: pégame el anterior, vuelve a copiar esto, copia ese de nuevo, recupera esa copia, ponlo otra vez en el portapapeles.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "allow_sensitive": {
+          "default": false,
+          "description": "Must be true to copy back a clip flagged sensitive; the content is still never returned to you.",
+          "title": "Allow Sensitive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "CopyArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_pin",
+    "description": "Pin or unpin a clip and optionally set its label/tags (write). Only when the user asks.\nSinónimos: fija esta copia, guarda esto, marca como favorito, etiqueta esta copia, quita de fijados.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        },
+        "pinned": {
+          "title": "Pinned",
+          "type": "boolean"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 30,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tags"
+        }
+      },
+      "required": [
+        "id",
+        "pinned"
+      ],
+      "title": "PinArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_delete",
+    "description": "Forget one clip (write, destructive; soft-deleted with a 24h undo window before it is purged for good).\nSinónimos: borra esta copia, olvida esto, elimina del portapapeles, quita esta copia.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "DeleteArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_status",
+    "description": "Is Echo watching the clipboard? Counts, storage and retention. Keywords: estado, portapapeles, retención.\nWhether Echo is watching the clipboard, counts of clips/pinned/sensitive, image storage used, retention configuration.\nSinónimos: estado del portapapeles, está vigilando, cuántas copias tengo, está en pausa.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_capture",
+    "description": "Pause or resume clipboard watching (write). Only when the user explicitly asks for it.\nSinónimos: pausa el portapapeles, deja de copiar, reanuda el portapapeles, vuelve a vigilar el portapapeles.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "enum": [
+            "pause",
+            "resume"
+          ],
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "CaptureArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "svc_status",
+    "description": "Is it up? Live status of every local AI service and app / ¿Está caído? Estado actual de servicios\nOne service or all: state (up, degraded, foreign, down, never_seen), since when, latency, pid, uptime, open incident, restart policy. Includes machine boot time and GPUs now.\nSinónimos: estado, caído, funciona, arriba, abajo, servicio, puerto, Faustus, Ollama, llama-server, ComfyUI, hub, app.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "service": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Service id, name or port (e.g. 'faustus', 'Argus', '8081'); omit for every service.",
+          "title": "Service"
+        }
+      },
+      "title": "StatusArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "svc_incidents",
+    "description": "Incidents (service down, restarted) in a time window / Incidencias y caídas en un intervalo de tiempo\nFilter by since/until or at='04:00' ± window_min, by service, or only open ones. Each has the probable cause and what else changed. Also lists reboots and periods when Cassandra itself was not running.\nSinónimos: qué pasó, caídas, incidencias, anoche, a las 4, se paró todo, cortes, historial.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "service": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this service (id, name or port).",
+          "title": "Service"
+        },
+        "open_only": {
+          "default": false,
+          "description": "Only incidents that are still open (service still down).",
+          "title": "Open Only",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "IncidentsArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "svc_why_down",
+    "description": "Why did a service stop? Latest incident explained with its cause / ¿Por qué se paró? Causa probable\nPlain sentences: when it fell, for how long, probable cause (reboot, sleep, several services at once, VRAM contention, Traceback in the log, process gone or hung), GPUs just before, last log lines, restart attempts.\nSinónimos: por qué, causa, motivo, se cayó, se paró, crash, error, explicación.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "service": {
+          "description": "Service id, name or port.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Service",
+          "type": "string"
+        },
+        "incident_id": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A specific incident instead of the latest one.",
+          "title": "Incident Id"
+        }
+      },
+      "required": [
+        "service"
+      ],
+      "title": "WhyArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "logs_search",
+    "description": "Search the logs of every local service by words, service and time / Buscar en los logs por texto y hora\nLines tailed from each app's data/logs, the launcher's logs and configured files, with time and level (error, warning, info). Use at='04:00' to read what happened around a moment.\nSinónimos: logs, registros, trazas, error, traceback, buscar en logs, qué dijo, mensajes.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "query": {
+          "default": "",
+          "description": "Words that must all appear in the line (case-insensitive); empty = any line.",
+          "maxLength": 300,
+          "title": "Query",
+          "type": "string"
+        },
+        "service": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only lines from this service's logs.",
+          "title": "Service"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "pattern": "^(error|warning|info|debug)$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "error, warning (includes errors), info or debug.",
+          "title": "Level"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "LogsArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "gpu_timeline",
+    "description": "GPU memory and load over time, peaks and which GPU is free now / Memoria de GPU en el tiempo, cuál está libre\nCompact series per GPU (mem % max/avg, util % max) from nvidia-smi samples, peak moments, current free memory and the freest GPU.\nSinónimos: GPU, VRAM, memoria de vídeo, tarjeta gráfica, libre, ocupada, carga, nvidia, picos.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "gpu": {
+          "anyOf": [
+            {
+              "maximum": 64,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this GPU index.",
+          "title": "Gpu"
+        },
+        "points": {
+          "default": 48,
+          "description": "Buckets in the returned series.",
+          "maximum": 500,
+          "minimum": 4,
+          "title": "Points",
+          "type": "integer"
+        }
+      },
+      "title": "GpuArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "svc_history",
+    "description": "Up/down timeline of one service: state changes and uptime / Historial de estados de un servicio\nState at the start of the window, every change (state, pid restart, restart action) with its time, segments and uptime percentage.\nSinónimos: historial, cronología, cuándo estuvo caído, disponibilidad, uptime, cambios de estado.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "service": {
+          "description": "Service id, name or port.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Service",
+          "type": "string"
+        }
+      },
+      "required": [
+        "service"
+      ],
+      "title": "HistoryArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "audit_search",
+    "description": "What the assistant and the apps did: agent calls and app events by time / Qué hizo el asistente, auditoría\nThe family bus mirrored from the Hoard Hub: one agent.call per tool run (app, tool, ok, ms, who asked), app milestones (scribe.transcript.done, links.watch.new), hub actions (backups, rules, starts). Filter by words, type glob, app, tool, failures, and time (at='03:12').\nSinónimos: auditoría, qué hizo, quién llamó, historial de acciones, eventos, llamadas del agente, qué pasó justo antes.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "query": {
+          "default": "",
+          "description": "Words that must appear in the event (type, source or data).",
+          "maxLength": 300,
+          "title": "Query",
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Event type glob, e.g. agent.call, scribe.*, hub.backup.*; | joins several.",
+          "title": "Type"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only events from this app id (or 'hub').",
+          "title": "Source"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only agent.call events for this tool.",
+          "title": "Tool"
+        },
+        "failed": {
+          "default": false,
+          "description": "Only failed agent calls.",
+          "title": "Failed",
+          "type": "boolean"
+        },
+        "limit": {
+          "default": 50,
+          "maximum": 500,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "AuditSearchArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "audit_stats",
+    "description": "Counts of agent calls per app and tool, failures, slowest, busiest callers / Estadísticas de uso del agente\nOver a window (default 7 days): events by type and source, agent.call per app/tool with failed count and avg/max ms, callers, and the last failures.\nSinónimos: estadísticas, cuántas veces, herramienta más usada, fallos, uso del agente, resumen de actividad.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        }
+      },
+      "title": "AuditStatsArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "secrets_audit",
+    "description": "Leaked secrets in app folders: tokens, data/ ignored, tracked .env or db / Auditoría de secretos\nPer app: token file present (and its permissions), data/ in .gitignore, secret-looking files tracked by git (mcp-token, .env, *.key, databases), .env files. Read-only.\nSinónimos: secretos, tokens, fugas, .env, gitignore, seguridad, qué está en git, credenciales.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "service": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this app (id, name or port); omit for every app folder.",
+          "title": "Service"
+        }
+      },
+      "title": "SecretsArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "faustus_attention",
+    "description": "Is Faustus waiting for me? Approvals, questions, stalled runs / ¿Me espera Faustus? Aprobaciones pendientes\nRead from Faustus's own attention list with a read-only token: what each chat is waiting for, for how long, the long waits (≥ wait_min) and runs that stopped sending events. Says why when it cannot read it (no token, refused, Faustus down).\nSinónimos: aprobación pendiente, me espera, atascado, turno parado, pregunta abierta, Faustus esperando, atención.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "wait_min": {
+          "default": 10,
+          "description": "Waits at least this long (minutes) are listed as long waits.",
+          "maximum": 1440,
+          "minimum": 0,
+          "title": "Wait Min",
+          "type": "number"
+        }
+      },
+      "title": "FaustusAttentionArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "faustus_farm",
+    "description": "What is Faustus running now? Runs, sub-agents, jobs, budget / ¿Qué está haciendo Faustus ahora?\nEvery chat turn in flight with the sub-agents it started, dispatched jobs and their workers, a night shift, workflow runs and scheduled tasks: title, kind, model, state, how long, progress. Plus the period budget (window used against pace, GPU seconds today, failure breaker, provider cooldowns). Names only, never message text. Says why when it cannot read it (no token, refused, Faustus down or too old).\nSinónimos: qué está corriendo, agentes en marcha, subagentes, trabajos, turno en curso, presupuesto, ritmo, GPU hoy, breaker, cooldown, Faustus ocupado.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "include_budget": {
+          "default": true,
+          "description": "Also return the period budget (pace, GPU seconds today, breaker, cooldowns). False = only what is running.",
+          "title": "Include Budget",
+          "type": "boolean"
+        }
+      },
+      "title": "FaustusFarmArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "sites_status",
+    "description": "Are my public websites up? Latency, certificate and domain days left / ¿Están mis webs públicas bien?\nEvery watched site (or one): up/down, HTTP status, latency, redirect, certificate days left and issuer, DNS answers, domain registration expiry (RDAP), last change, open incident, warnings.\nSinónimos: web caída, mi página, certificado, caducidad, dominio, TLS, SSL, https, renovación, disponibilidad.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Site id, name or host (e.g. 'example.com'); omit for every site.",
+          "title": "Site"
+        }
+      },
+      "title": "SitesStatusArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "site_history",
+    "description": "Up/down history of one public website: changes, uptime, latency / Historial de una web pública\nState changes (down, up, certificate renewed or expiring, DNS answers changed), uptime percentage, latency avg/p95/max with a series, and its incidents with cause.\nSinónimos: historial de la web, cuándo estuvo caída, disponibilidad, uptime, latencia, certificado renovado.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End (same formats). Default now.",
+          "title": "Until"
+        },
+        "at": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+          "title": "At"
+        },
+        "window_min": {
+          "default": 15,
+          "description": "Half-width of the `at` window in minutes.",
+          "maximum": 1440,
+          "minimum": 1,
+          "title": "Window Min",
+          "type": "number"
+        },
+        "site": {
+          "description": "Site id, name or host.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Site",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site"
+      ],
+      "title": "SiteHistoryArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "svc_restart",
+    "description": "Restart or start one service now (only when the user asks) / Reiniciar o arrancar un servicio ahora\nUses its restart command, the Hoard Hub launcher or the app's launch hint; recorded in the open incident. Refuses when another program holds the port.\nSinónimos: reiniciar, arrancar, levantar, relanzar, volver a encender, restart, start.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "service": {
+          "description": "Service id, name or port.",
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Service",
+          "type": "string"
+        }
+      },
+      "required": [
+        "service"
+      ],
+      "title": "RestartArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "svc_watch",
+    "description": "Add or edit a watched service: URL, health path, logs, restart policy / Añadir o editar un servicio vigilado\nSaved in data/services.json. An existing id (also a discovered app or built-in) is edited; restart.enabled turns on automatic restarts (opt-in, max_per_hour). Only when the user asks.\nSinónimos: vigilar, monitorizar, añadir servicio, nuevo servicio, política de reinicio, logs de un servicio.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "$defs": {
+        "RestartPolicyArgs": {
+          "properties": {
+            "enabled": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Restart automatically when it goes down (opt-in).",
+              "title": "Enabled"
+            },
+            "cmd": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Command to start it (shell string or argv list). Needs CASSANDRA_AGENT_COMMANDS=1 from the assistant.",
+              "title": "Cmd"
+            },
+            "cwd": {
+              "anyOf": [
+                {
+                  "maxLength": 2000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Working directory for cmd.",
+              "title": "Cwd"
+            },
+            "max_per_hour": {
+              "anyOf": [
+                {
+                  "maximum": 60,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Maximum automatic restarts per hour (default 3).",
+              "title": "Max Per Hour"
+            }
+          },
+          "title": "RestartPolicyArgs",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "id": {
+          "description": "Lowercase id (letters, digits, . _ -). An existing id edits that service.",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Base URL, e.g. http://127.0.0.1:9000 (required for a new service).",
+          "title": "Url"
+        },
+        "health_path": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Path probed for health, e.g. /health (default /).",
+          "title": "Health Path"
+        },
+        "expect": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "JSON key/value the answer must contain; value '*' = key present.",
+          "title": "Expect"
+        },
+        "log_paths": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Log files or globs to tail for this service.",
+          "title": "Log Paths"
+        },
+        "restart": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RestartPolicyArgs"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "WatchArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "sites_watch",
+    "description": "Add, edit or remove a watched public website / Añadir, editar o quitar una web pública vigilada\nSaved in data/sites.json: url, expected status, keyword, check interval, pause. Removing keeps its history. Changes the watch list: only when the user asks.\nSinónimos: vigilar una web, añadir sitio, quitar sitio, monitorizar página, palabra clave, intervalo de comprobación.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "action": {
+          "description": "add a site, edit one (only the fields you pass change) or remove it from the list (its history stays).",
+          "enum": [
+            "add",
+            "edit",
+            "remove"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Lowercase id (letters, digits, . _ -). Required for edit and remove; add derives it from the url.",
+          "title": "Id"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Home page, e.g. https://example.com/ (required for add).",
+          "title": "Url"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "expect_status": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Accepted HTTP statuses: '2xx', '301', '200-299'. Default ['2xx','3xx'].",
+          "title": "Expect Status"
+        },
+        "keyword": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Text the home page must contain (case-insensitive); empty string removes it.",
+          "title": "Keyword"
+        },
+        "interval_min": {
+          "anyOf": [
+            {
+              "maximum": 1440,
+              "minimum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Minutes between checks (default 5, minimum 1).",
+          "title": "Interval Min"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "false pauses the checks.",
+          "title": "Enabled"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "maxLength": 253,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Registrable domain for the RDAP expiry lookup when the automatic guess is wrong (e.g. example.co.uk).",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "title": "SitesWatchArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "scribe_status",
+    "description": "Is a recording in progress? Backend, devices, model and queue. Keywords: estado, grabando, micrófono.\nWhether a recording is in progress (title, elapsed time, tracks), which audio backend and devices exist, the transcription model and its download state, and queue depth.\nSinónimos: estado, grabando, está grabando, micrófono, modelo, transcripción, dispositivos.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_sessions",
+    "description": "List recorded sessions newest first, with filters. Keywords: reuniones, grabaciones, sesiones, notas de voz.\nList recorded sessions (meetings, interviews, voice notes, imports) newest first with title, when, duration, kind, tags and the first transcribed line. Filter by words, kind, tag and dates.\nSinónimos: reunión, entrevista, llamada, nota de voz, sesiones, grabaciones, qué reuniones, ayer, esta semana, lista.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "q": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Words in the title or transcript.",
+          "title": "Q"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "meeting",
+                "interview",
+                "note",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "meeting | interview | note | other",
+          "title": "Kind"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sessions started after this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sessions started before this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+          "title": "To"
+        },
+        "limit": {
+          "default": 20,
+          "maximum": 100,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "SessionsArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_transcript",
+    "description": "Transcript of one session with speakers and timestamps, paginated. Keywords: transcripción, qué se dijo.\nTranscript of one session with speaker labels (yo/otros from the audio channel) and timestamps, paginated by time (from_s/to_s, next_from_s). Read it before summarising or quoting a session.\nSinónimos: transcripción, qué dijeron, qué se dijo, leer la reunión, hablaron de, entrevista, llamada. (Para el acta o los acuerdos usa scribe_minutes.)",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "from_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Start offset in seconds (page through long sessions).",
+          "title": "From S"
+        },
+        "to_s": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "End offset in seconds.",
+          "title": "To S"
+        },
+        "max_chars": {
+          "default": 12000,
+          "description": "Cut the page here; the reply tells you where to continue.",
+          "maximum": 60000,
+          "minimum": 500,
+          "title": "Max Chars",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "TranscriptArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_search",
+    "description": "Search every transcript by words, grouped by session. Keywords: cuándo hablamos de, buscar en reuniones.\nFull-text search across every transcript: hits grouped by session with time offset, speaker and a snippet. Best first step for 'when did we talk about X'.\nSinónimos: buscar, hablaron de, cuándo dijimos, salario, presupuesto, mencionaron, en qué reunión, reunión, entrevista, transcripción.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "q": {
+          "description": "Words to find (all must appear; last word matches as prefix).",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Q",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "enum": [
+                "meeting",
+                "interview",
+                "note",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sessions started after this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+          "title": "From"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Sessions started before this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+          "title": "To"
+        },
+        "limit": {
+          "default": 40,
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "q"
+      ],
+      "title": "SearchArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_start",
+    "description": "Start recording a new session (only when the user asks now). Keywords: graba, empieza a grabar, reunión.\nStart recording a new session (microphone = 'yo', system audio = 'otros'). Only when the user explicitly asks in the current message; not destructive. Tell the user recording has started and that scribe_stop stops it.\nSinónimos: grabar, empieza a grabar, graba la reunión, graba la entrevista, nota de voz, grabación, llamada.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "title": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "kind": {
+          "default": "meeting",
+          "enum": [
+            "meeting",
+            "interview",
+            "note",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "mic": {
+          "default": true,
+          "description": "Capture the microphone (the user, labelled 'yo').",
+          "title": "Mic",
+          "type": "boolean"
+        },
+        "system": {
+          "default": true,
+          "description": "Capture system audio / loopback (the others, labelled 'otros'). Windows only.",
+          "title": "System",
+          "type": "boolean"
+        },
+        "language": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "es",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        }
+      },
+      "title": "StartArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_stop",
+    "description": "Stop the recording in progress; the final transcription runs in the background and replaces the live one.\nSinónimos: parar, detener, deja de grabar, termina la grabación, fin de la reunión.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "SessionIdArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_note",
+    "description": "Append text to a session's notes (decisions, action items, a summary the user approved).\nAn identical trailing note is returned with existing=true instead of appended again.\nSinónimos: nota, apunta, añade a las notas, apuntes de la sesión.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text appended to the session notes.",
+          "maxLength": 20000,
+          "minLength": 1,
+          "title": "Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "notes"
+      ],
+      "title": "NoteArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_tag",
+    "description": "Add or remove tags on a session (idempotent: existing tags are kept once).\nSinónimos: etiqueta, etiquetar, categoría, marcar, cliente, proyecto.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "add": {
+          "description": "Tags to add (lower-cased, deduplicated).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Add",
+          "type": "array"
+        },
+        "remove": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Remove",
+          "type": "array"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "TagArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_export",
+    "description": "Render a session as text, SRT or Markdown (md includes notes and minutes). Exportar.\nReturns the transcript as plain text, SRT subtitles or Markdown; the Markdown also carries the notes and, when they exist, the minutes.\nSinónimos: exportar, subtítulos, markdown, texto, descargar la transcripción, exportar el acta.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "format": {
+          "default": "md",
+          "enum": [
+            "txt",
+            "srt",
+            "md"
+          ],
+          "title": "Format",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "ExportArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_minutes",
+    "description": "Meeting minutes of a session: summary, decisions, action items with evidence. Acta de reunión.\nWrites (or returns the stored) minutes of a transcribed session with the local model: summary, decisions, action items {owner yo|name, action, counterpart, due_date/due_text, evidence {start_s, end_s, speaker, literal quote}}, open questions and participants. Every action item's quote is verified against the transcript and items without one are dropped. status: ready | no_model (no local language model; nothing was invented) | not_ready (still transcribing) | no_speech | error. regenerate=true replaces stored minutes. Long meetings can take minutes.\nSinónimos: acta, minutas, resumen de la reunión, acuerdos, tareas pendientes, qué se acordó, quién se comprometió, compromisos, action items, decisiones.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "regenerate": {
+          "default": false,
+          "description": "Write the minutes again with the model even if some are stored (the old ones are replaced).",
+          "title": "Regenerate",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "MinutesArgs",
+      "type": "object",
+      "x-timeout-s": 1800.0
+    },
+    "module": "audio",
+    "x-timeout-s": 1800.0
+  },
+  {
+    "name": "minutes_get",
+    "description": "Minutes of a meeting for other apps: title, date, attendees, action items with owner and due, summary.\nReturns the minutes (acta) of a transcribed meeting session in a compact shape: {title, date, attendees: [names], action_items: [{text, owner (yo | a name | empty), counterpart, due (YYYY-MM-DD or null), due_text, quote}], summary, decisions, open_questions}. Writes them with the local model when none are stored (generate=true, the default); status is ready, or no_model, not_ready, no_speech, not_generated. minutes_id is the session id announced by funes.minutes.ready.\nSinónimos: acta, minutas, asistentes, quién estuvo en la reunión, tareas de la reunión, acuerdos, resumen de la reunión.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "minutes_id": {
+          "description": "Id of the meeting session whose minutes you want (the minutes_id of funes.minutes.ready).",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Minutes Id",
+          "type": "string"
+        },
+        "generate": {
+          "default": true,
+          "description": "Write the minutes with the local model when none are stored. false only reads what is stored.",
+          "title": "Generate",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "minutes_id"
+      ],
+      "title": "MinutesGetArgs",
+      "type": "object",
+      "x-timeout-s": 1800.0
+    },
+    "module": "audio",
+    "x-timeout-s": 1800.0
+  },
+  {
+    "name": "scribe_import_file",
+    "description": "Import a local audio/video file as a session and optionally wait for its transcript. Importar audio.\nCreates a session from a file already on this computer, by absolute path (the original is copied, never moved or deleted), and transcribes it in the background. With wait_s > 0 it waits up to that many seconds and returns {session, status, transcript_text} (cut at 60000 characters with next_from_s to continue). Use it to get the text of a recorded class, call or video.\nSinónimos: importar audio, importar vídeo, transcribir un archivo, transcribe este vídeo, pasar a texto, grabación existente, mp3, mp4, subir audio.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Absolute path of an audio/video file on this computer (wav, mp3, m4a, mp4, mkv, webm...).",
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "title": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Title",
+          "type": "string"
+        },
+        "kind": {
+          "default": "other",
+          "enum": [
+            "meeting",
+            "interview",
+            "note",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "language": {
+          "default": "auto",
+          "enum": [
+            "auto",
+            "es",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the transcription to finish. 0 returns the session at once; poll scribe_sessions or scribe_transcript later.",
+          "maximum": 3600,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "ImportFileArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "transcribe_file",
+    "description": "Speech to text of an audio/video file by path, no session kept. Transcribir un archivo.\nTranscribes a file already on this computer (absolute path) and returns {job_id, status, progress, language, duration_s, text, segments [{start_s, end_s, text, words}], model, device, note, stats}; with wait_s (max 150) it waits for the result, otherwise poll transcribe_status. Nothing is stored in Funes: no session, no copy of the file. For the user's own recordings use scribe_import_file.\nSinónimos: transcribir, pasar a texto, audio a texto, subtítulos de un vídeo, dictado, speech to text.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "path": {
+          "description": "Absolute path of an audio/video file on this computer (wav, mp3, m4a, mp4, mkv, webm...). Paths, never bytes.",
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "language": {
+          "default": "auto",
+          "description": "'auto' (detect it) or a language code such as 'es' or 'en'.",
+          "maxLength": 12,
+          "title": "Language",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Whisper size (tiny, base, small, medium, large-v3...). Empty: the one Funes is configured with.",
+          "title": "Model"
+        },
+        "word_timestamps": {
+          "default": true,
+          "description": "Timestamp every word.",
+          "title": "Word Timestamps",
+          "type": "boolean"
+        },
+        "initial_prompt": {
+          "default": "",
+          "description": "Names and jargon to prime the model with.",
+          "maxLength": 1000,
+          "title": "Initial Prompt",
+          "type": "string"
+        },
+        "vad": {
+          "default": true,
+          "description": "Skip silence before decoding.",
+          "title": "Vad",
+          "type": "boolean"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job (max 150). 0 returns {job_id, status} at once; poll transcribe_status.",
+          "maximum": 150,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "TranscribeFileArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "transcribe_status",
+    "description": "State and result of a transcription job started with transcribe_file.\nSame answer as transcribe_file; wait_s (max 150) waits for it to finish. Finished jobs are kept for an hour.\nSinónimos: cómo va la transcripción, estado del trabajo, resultado de la transcripción.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Job Id",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job to finish (max 150).",
+          "maximum": 150,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "job_id"
+      ],
+      "title": "TranscribeStatusArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "transcribe_cancel",
+    "description": "Cancel a transcription job started with transcribe_file (idempotent).\nA finished job is left as it is and its own status returned.\nSinónimos: cancelar la transcripción, parar el trabajo.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Job Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id"
+      ],
+      "title": "TranscribeCancelArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_delete",
+    "description": "Permanently delete a session (only when asked; no undo). Keywords: borrar grabación, eliminar sesión.\nPermanently delete a session: audio, transcript and notes. Only when the user explicitly asks; there is no undo.\nSinónimos: borrar, eliminar, borra la grabación, elimina la reunión, olvidar.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "SessionIdArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "activity_now",
+    "description": "What the user is doing right now: app, window, project, idle time. Qué estoy haciendo ahora.\n\nWhat the user is doing right now: the foreground app, window title,\ncategory and project, how long it has been open (`since`), idle seconds,\nand whether recording is on or paused (`paused_until`). While paused no\ncurrent window is reported. Use it for \"what am I doing?\" or \"are you\nrecording me?\".\nKeywords: what am I doing, current window, right now, idle, am I being recorded, is it paused, qué estoy haciendo, que estoy haciendo, ahora mismo, ventana actual, está grabando, pausado.\n",
+    "inputSchema": {
+      "properties": {},
+      "title": "activity_nowArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_agents_day",
+    "description": "Recorded agent events in a day: Faustus turns, closed Agora tasks and commits.\n\nRead-only. day accepts yesterday/ayer or a date. kind is turn, task or commit,\nomitted for all. Sources and timestamps stay explicit; a Git author is not\nan agent identity and events are not inferred hours of work. Check truncated,\nsources and has_more before claiming complete coverage; use next_offset to\ncontinue. The Hub's retention window and task limit can leave older days partial.\nKeywords: agent activity, what did agents do yesterday, closed tasks, commits,\nactividad de agentes, qué hicieron los agentes ayer, tareas cerradas, diario.\n",
+    "inputSchema": {
+      "properties": {
+        "day": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Day"
+        },
+        "limit": {
+          "default": 50,
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "title": "Offset",
+          "type": "integer"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        }
+      },
+      "title": "activity_agents_dayArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_where_was_i",
+    "description": "Where was I: the last things worked on before a moment, to resume. Por dónde iba, retomar.\n\nLast distinct contexts, newest first (known projects ahead of bare apps), each with its last window titles, time range (`human`), duration, up to 5 opened files and 5 commits. Away time and alt-tab blips are skipped. A title naming a file shows it was in the foreground, not that it was edited; no recorded commit does not imply uncommitted changes.\nKeywords: where was I, resume, what was I working on, dónde estaba, dónde lo dejé, en qué estaba trabajando, retomar.\n",
+    "inputSchema": {
+      "properties": {
+        "before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Look back from this moment; default now. \"ayer\"/\"yesterday\" = end of yesterday, \"-2h\" = two hours ago, a weekday name (\"martes\", \"last tuesday\") = that whole day.",
+          "title": "Before"
+        },
+        "contexts": {
+          "default": 5,
+          "description": "Distinct contexts to return, 1-20.",
+          "title": "Contexts",
+          "type": "integer"
+        },
+        "all_categories": {
+          "default": false,
+          "description": "Also include Media/Communication/Games (music player, chat app), skipped by default.",
+          "title": "All Categories",
+          "type": "boolean"
+        }
+      },
+      "title": "activity_where_was_iArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_project_resume",
+    "description": "Resume one named project from its recent windows, opened files and commits.\n\nUse when asked where work on a specific project stopped, including weeks\nago. Exact project name, case insensitive. Last 30 days by default; days\n1-180, limit 1-10 per evidence type. Foreground titles do not prove edits.\nEmpty results mean no recorded evidence in that interval, not no work.\nKeywords: resume project, where did I leave off on project, project context,\nretomar proyecto, por dónde iba en el proyecto, donde lo dejé en proyecto.\n",
+    "inputSchema": {
+      "properties": {
+        "project": {
+          "title": "Project",
+          "type": "string"
+        },
+        "days": {
+          "default": 30,
+          "title": "Days",
+          "type": "integer"
+        },
+        "limit": {
+          "default": 5,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "project"
+      ],
+      "title": "activity_project_resumeArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_timeline",
+    "description": "Timeline of the windows and apps used in a range, with durations. Cronología, qué hice hoy.\n\nSpans in order (one window/app, or away/locked), each with `id`, app, title, category, project, duration and `human` range. A foreground window does not prove edits, commands or causes; do not infer uninterrupted work between spans. For a week or more prefer activity_summary.\nKeywords: timeline, what did I do, activity log, around then, línea de tiempo, qué hice, historial, cronología del día, qué hacía entonces.\n",
+    "inputSchema": {
+      "properties": {
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A single day word or date (\"ayer\", \"2026-09-20\") selects that whole day; otherwise range start. Default today.",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Range end; default now.",
+          "title": "End"
+        },
+        "min_minutes": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Skip shorter spans. Default 2 for a day or less, 5 for longer ranges, 0 with `around`.",
+          "title": "Min Minutes"
+        },
+        "limit": {
+          "default": 20,
+          "description": "Max spans, up to 100.",
+          "title": "Limit",
+          "type": "integer"
+        },
+        "offset": {
+          "default": 0,
+          "description": "Use `next_offset` when `has_more` is true.",
+          "title": "Offset",
+          "type": "integer"
+        },
+        "around": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A search hit's `ts` (or any time): every span 30 min either side.",
+          "title": "Around"
+        }
+      },
+      "title": "activity_timelineArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_summary",
+    "description": "Time totals per category, app or project for a day, week or range. Cuánto tiempo, resumen del día.\n\nActive and away time, totals as seconds (`by_*`) and ready-to-read strings (`by_*_human`), first/last activity, context switches and focus blocks (>= 25 min on one project/category). Answer from the *_human strings.\nKeywords: summary, time spent, how many hours, focus time, week report, resumen del día, cuántas horas, tiempo de foco, productividad, resumen semanal.\n",
+    "inputSchema": {
+      "properties": {
+        "day": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "today/hoy, yesterday/ayer, \"this week\"/\"esta semana\", \"last week\", a weekday name or an ISO date. Default today.",
+          "title": "Day"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Range start (ISO date or day word) instead of `day`.",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Range end; defaults to now.",
+          "title": "End"
+        },
+        "group_by": {
+          "default": "category",
+          "description": "\"category\" | \"app\" | \"project\" | \"all\". Use \"project\" for time on one project.",
+          "title": "Group By",
+          "type": "string"
+        }
+      },
+      "title": "activity_summaryArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_search",
+    "description": "When did a window title, file or commit mention these words. Buscar en mi actividad, cuándo abrí.\n\nHits newest first, each with `source` (span/file/commit), `ref_id`, `ts`, `when` and a short `text` with the match in [brackets]; window hits also carry `duration_s`/`human`. To see what surrounded a hit, call activity_timeline(around=<its ts>).\nKeywords: search, find when, that page about, that file called, that commit, buscar, cuándo vi, cuándo abrí, ese archivo, ese commit.\n",
+    "inputSchema": {
+      "properties": {
+        "query": {
+          "description": "Words to find; prefixes count (\"duck\" finds \"DuckDB\"), punctuation ignored. All words must match, else any word is tried and `matched` says \"any word\".",
+          "title": "Query",
+          "type": "string"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day word (\"ayer\" = from yesterday 00:00) or ISO date.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day word or ISO date; default now.",
+          "title": "Until"
+        },
+        "limit": {
+          "default": 10,
+          "description": "Max hits, up to 100.",
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "activity_searchArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_recent_files",
+    "description": "Files opened recently, newest first, with full paths. Archivos recientes, qué abrí.\n\nFiles the user opened recently (from the Windows Recent Items list),\nnewest first, each with its full path, `when` and file extension\n(`app_hint`). Default window: the last 7 days. `limit` max 100.\nKeywords: recent files, what file did I open, last opened document, which file was I editing, archivos recientes, qué archivo abrí, que archivo abri, último documento, documento abierto.\n",
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        },
+        "limit": {
+          "default": 15,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "activity_recent_filesArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_projects",
+    "description": "Projects ranked by time spent and commits since a moment. En qué proyectos he trabajado.\n\nProjects ranked by time spent since a moment through now (default: last\n30 days). This is an open-ended range: `since=\"ayer\"` includes today.\nFor yesterday only, call activity_summary(day=\"ayer\", group_by=\"project\"):\nactive time (`time_human`), when each was last touched, and how many git\ncommits were recorded for it. Projects come from editor window titles\nand known git repo names. `limit` max 100.\nKeywords: projects, time per project, which project did I work on most, last touched, commits per project, proyectos, tiempo por proyecto, en qué proyecto, última vez, commits por proyecto.\n",
+    "inputSchema": {
+      "properties": {
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        },
+        "limit": {
+          "default": 10,
+          "title": "Limit",
+          "type": "integer"
+        }
+      },
+      "title": "activity_projectsArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_pause",
+    "description": "Pause activity recording for some minutes (write; only when asked). Pausar registro, no me grabes.\n\nPause activity recording for `minutes` (1-1440, default 15), e.g. when\nthe user asks not to be tracked for a while. It only ever extends a\npause: if recording is already paused for longer (or until the user\nresumes), nothing changes and `note` says so. It cannot resume early,\nchange privacy rules, delete history or export data; those need the\nhuman in the app's Privacy screen.\nKeywords: pause recording, stop tracking, don't record, privacy break, pausar grabación, pausar grabacion, deja de grabar, no me grabes, dejar de rastrear un rato.\n",
+    "inputSchema": {
+      "properties": {
+        "minutes": {
+          "default": 15,
+          "title": "Minutes",
+          "type": "number"
+        }
+      },
+      "title": "activity_pauseArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "recall",
+    "description": "What was I doing at a time: screen, clipboard, audio and PC in one call / qué estaba haciendo a esa hora.\n\nCall FIRST for \"what was I doing / qué pasó a las X\". Merged timeline from Funes, Argus (screen), Echo (clipboard) and Scribe (audio); quote each item's bracket `citation` verbatim. `summary.unavailable` lists sources that failed: missing evidence, not proof of no activity. Contradicting memories keep the best supported one and list the rest in `contradictions`.\nKeywords: what was I doing, timeline, recall, qué estaba haciendo, qué pasó, a esa hora, pantalla, portapapeles, audio, con citas.\n",
+    "inputSchema": {
+      "properties": {
+        "at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "now/ahora, \"a las 16:00\", \"hace 10 minutos\", \"ayer por la tarde\", a weekday name or an ISO date/datetime. Omitted/now also returns `now` (current foreground window).",
+          "title": "At"
+        },
+        "window_minutes": {
+          "default": 15,
+          "description": "Minutes either side of `at`.",
+          "title": "Window Minutes",
+          "type": "number"
+        },
+        "sources": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Limit the fan-out to these source ids, e.g. [\"argus\"].",
+          "title": "Sources"
+        },
+        "limit_per_source": {
+          "default": 20,
+          "title": "Limit Per Source",
+          "type": "integer"
+        },
+        "include_dropped": {
+          "default": false,
+          "description": "Pass true to keep memories dropped as contradictory in items, marked 'descartado por contradiccion' with kept_citation.",
+          "title": "Include Dropped",
+          "type": "boolean"
+        }
+      },
+      "title": "recallArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "recall_search",
+    "description": "Find a topic across screen, clipboard, audio and PC memory / busca un tema en todas las apps.\n\nFull-text search over Funes's history, Argus (screen OCR), Echo (clipboard) and Scribe (transcripts), merged newest first with the same bracket `citation` as recall(). Contradicting memories keep the best supported one and list the rest in `contradictions`. Prefer recall() when the question is about a time.\nKeywords: search everywhere, find across apps, when did I see that, busca en todo, cuándo vi eso, en qué app.\n",
+    "inputSchema": {
+      "properties": {
+        "query": {
+          "description": "Topic to search for (full text).",
+          "title": "Query",
+          "type": "string"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day word (\"ayer\" = from yesterday 00:00) or ISO date/datetime. Default last 7 days.",
+          "title": "Since"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Day word or ISO date/datetime; default now.",
+          "title": "Until"
+        },
+        "sources": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Limit the fan-out to these source ids, e.g. [\"argus\"].",
+          "title": "Sources"
+        },
+        "limit_per_source": {
+          "default": 20,
+          "title": "Limit Per Source",
+          "type": "integer"
+        },
+        "include_dropped": {
+          "default": false,
+          "description": "Pass true to keep memories dropped as contradictory in items, marked 'descartado por contradiccion' with kept_citation.",
+          "title": "Include Dropped",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "recall_searchArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "sources_status",
+    "description": "Whether Argus, Echo and Scribe are reachable for recall / si las fuentes están disponibles.\nHealth of every federated source (id, name, base_url, enabled, `ok` and\na short `reason` when not). Call this when recall/recall_search reports\na source unavailable and the user asks why, or before relying on a\nspecific source.\nKeywords: sources status, is argus running, is echo running, is scribe running, estado de las fuentes, está encendido argus, está encendido echo, está encendido scribe.\n",
+    "inputSchema": {
+      "properties": {},
+      "title": "sources_statusArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "disk_drives",
+    "description": "Drives with used and free space. Keywords: discos, unidades, espacio libre, cuánto queda, disk space.\nReturns every mounted drive (path, label, type, total, free) plus shortcuts such as Downloads or AppData. Use it first to decide where to scan.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_scan",
+    "description": "Scan a folder or drive to measure what takes space. Keywords: escanear, analizar disco, qué ocupa, scan.\nWalks the tree in parallel (a full 1.5 TB drive takes about a minute) and keeps a size map in memory that the other tools query. By default waits for the scan to end; with wait=false it returns at once and disk_status reports progress. Replaces any previous scan.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder or drive to scan, e.g. C:\\ or C:\\Users\\me"
+        },
+        "wait": {
+          "type": "boolean",
+          "default": true,
+          "description": "Block until the scan finishes"
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 900,
+          "default": 240,
+          "description": "Maximum seconds to wait when wait=true"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_status",
+    "description": "Progress of the running scan or summary of the last one. Keywords: estado, progreso, cuánto falta.\nCheap to call. Says whether a scan is running, how many files and bytes it has seen, and when done the root, total size, file and folder counts.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_dir",
+    "description": "Contents of a scanned folder, biggest first, with junk tags. Keywords: carpeta, qué hay dentro, listar.\nEach entry has size, file count, share of the parent, last modified date and, when the catalog knows the folder, what it is and whether it is safe to delete. Files are listed live so the view is always current.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder path, e.g. C:\\Users\\me or D:\\. Omit for the root of the current scan."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 40
+        },
+        "dirs_only": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_hotspots",
+    "description": "Where the space really goes: disjoint heavy spots. Keywords: puntos calientes, dónde están mis gigas.\nNot a folder ranking (that repeats parent and child): a partition of the tree into pieces that do not overlap, each attributed as deep as the weight can be pinned. What is spread over many small things appears as 'scattered rest'.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 30
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_junk",
+    "description": "Known junk with safety level: caches, node_modules, temp. Keywords: basura, limpiar, liberar espacio.\nEvery item says what it is, why it is there, how it regenerates and whether it is 'safe' (regenerates alone), 'review' (heavy but recoverable) or 'danger' (never delete). Totals per category and the reclaimable sum come with it. Includes category 'Agentes de IA': caches and history of Claude Code, Claude Desktop, Codex, Cursor, VS Code. Filter by safety, category or minimum size.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "safety": {
+          "type": "string",
+          "enum": [
+            "safe",
+            "review",
+            "danger",
+            "all"
+          ],
+          "default": "all"
+        },
+        "category": {
+          "type": "string",
+          "description": "Exact category name as returned, e.g. 'Compilaciones'"
+        },
+        "min_mb": {
+          "type": "number",
+          "minimum": 0,
+          "default": 20
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600,
+          "default": 60
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_stale",
+    "description": "Big folders nobody touched in months. Keywords: sin tocar, olvidado, antiguo, stale, untouched.\nFolders above a size floor whose newest file is older than the given number of months. Good candidates for archiving or asking the user about.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "months": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "default": 12
+        },
+        "min_gb": {
+          "type": "number",
+          "minimum": 0.05,
+          "default": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 40
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_top_files",
+    "description": "The heaviest single files of the scan. Keywords: ficheros grandes, archivos pesados, biggest files.\nUp to 500 largest files with a note for the usual suspects (hiberfil.sys, pagefile.sys, .vhdx, Blender .blend1 copies). Optionally restrict to an extension.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 30
+        },
+        "ext": {
+          "type": "string",
+          "description": "Only this extension, e.g. '.iso' or 'mp4'"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_types",
+    "description": "Space by file category: video, AI models, archives, code. Keywords: por tipo, extensiones, file types.\nAggregates the scan by category with the top extensions of each.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40,
+          "default": 20
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_find",
+    "description": "Find files by name glob, extension, size or age in a folder. Keywords: buscar ficheros, mayores de, find.\nWalks the folder live (bounded to max_entries) and returns matches biggest first. Combine filters: name glob (*.iso), minimum size, older than N days. Works on any folder, scanned or not.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder path, e.g. C:\\Users\\me or D:\\. Omit for the root of the current scan."
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Case-insensitive glob on the file name, e.g. '*.iso' or 'backup*'"
+        },
+        "min_mb": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0
+        },
+        "older_than_days": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 50
+        },
+        "max_entries": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 2000000,
+          "default": 300000
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_explain",
+    "description": "What a folder or file is and whether it is safe to delete. Keywords: qué es esta carpeta, se puede borrar.\nMatches the path against the junk catalog (node_modules, caches, WinSxS...) and the file notes, and adds its measured size when it is inside the current scan. Answers 'danger' for anything the assistant must never delete.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute path of a folder or file"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_script",
+    "description": "Write a reviewable PowerShell cleanup script for paths. Keywords: script de limpieza, powershell, dry run.\nNothing is deleted: the script is saved under the app's data folder and returned, with -WhatIf support so the user can simulate it first. Prefer this over disk_delete when the user wants to look before anything happens.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 500
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "paths"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_delete",
+    "description": "Delete paths: Recycle Bin by default, permanent only with confirm. Keywords: borrar, eliminar, papelera.\nRefuses drive roots, the profile, Windows, Program Files, 'danger' items and AI-tool config. Re-measures each item (bytes, files, newest mtime) first: if it no longer matches the scan it is NOT deleted and comes back in `changed` with hint 'rescan' (force=true skips this, only if the user insists). Returns expected_bytes (scan) vs freed_bytes (measured) and the difference; in trash mode disk space frees only when the bin is emptied.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 500
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "trash",
+            "permanent"
+          ],
+          "default": "trash"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Must be true for mode='permanent'. Say so to the user first."
+        },
+        "force": {
+          "type": "boolean",
+          "default": false,
+          "description": "Delete even when an item changed since the scan. Only if the user insists."
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 1800,
+          "default": 600
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "paths"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_rescan",
+    "description": "Re-read one subfolder and splice fresh numbers into the scan. Keywords: refrescar, actualizar, rescan.\nSeconds instead of a full scan. Use it after deleting outside the app or when a folder changed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder path, e.g. C:\\Users\\me or D:\\. Omit for the root of the current scan."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_ollama_backups",
+    "description": "Ollama migration backup copies and orphan blobs. Keywords: copias de Ollama, blobs huérfanos, liberar GB.\nRead-only, needs no scan. Lists migration backups (Ollama 0.40+ keeps the original copy until `ollama rm`), blobs no manifest references, abandoned partial downloads and backup-looking folders, each with size, owning model and `safe`. Safe means the migrated model's manifest and blobs exist, every manifest is readable and nothing is recent. Returns reclaimable_bytes (safe items only), reasons for the rest, model completeness and whether Ollama is busy.\nSinónimos: copias de seguridad de Ollama, cuánto puedo liberar de Ollama, modelos duplicados tras actualizar.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "models_dir": {
+          "type": "string",
+          "description": "Ollama models folder; default OLLAMA_MODELS or ~/.ollama/models"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "all",
+            "ggml_backup",
+            "orphan_blob",
+            "partial",
+            "orphan_metadata",
+            "backup_dir",
+            "backup_file"
+          ],
+          "default": "all",
+          "description": "Only this kind of item (backups, orphan blobs, partial downloads...)"
+        },
+        "safe_only": {
+          "type": "boolean",
+          "default": false,
+          "description": "List only items marked safe"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_ollama_free",
+    "description": "Free Ollama backups and orphans marked safe. Keywords: liberar copias de Ollama, borrar backups.\nFrees ONLY items disk_ollama_backups marks safe, re-detected at call time. dry_run=true by default (plan only); a real run needs dry_run=false AND confirm=true, after showing the user the list. Refuses while Ollama has loaded models, is pulling or creating, or the folder cannot be verified. Every call is audited in data/ollama-free-audit.jsonl.\nSinónimos: libera lo que sobra de Ollama, borra las copias de la migración.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 500,
+          "description": "Item ids from disk_ollama_backups; omit for every safe item"
+        },
+        "models_dir": {
+          "type": "string",
+          "description": "Ollama models folder; default as disk_ollama_backups"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "default": true,
+          "description": "True (default) only returns the plan, sizes and blockers; nothing changes"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Must be true (with dry_run=false) to delete anything. Say so to the user first."
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "trash",
+            "permanent"
+          ],
+          "default": "trash",
+          "description": "'trash' (default): Recycle Bin, frees disk once emptied. 'permanent': deleted for good. Migration backups are removed with `ollama rm <digest>` (needs the Ollama server running; cannot be undone, downgrading below 0.40 would need a re-pull)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_zip_plan",
+    "description": "Dry-run: plan ZIP parts under a size limit. Keywords: partir en zips, dividir en partes, zip de 990 MB.\nTakes a folder and says which files go into part_001.zip, part_002.zip... so every part stays under the limit (upload sites with a per-file cap), with estimated part sizes and the files bigger than the limit. Writes nothing. 'stored' sizes are exact; 'deflated' are upper bounds. Sizes: '990mb' decimal, '990mib' binary, plain bytes. Default excludes: Thumbs.db, desktop.ini, .DS_Store, *.tmp, ~$* (an explicit exclude list replaces them).\nSinónimos: partir esta carpeta en zips, cuántos zips saldrían, zip para subir a una web.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder to split, e.g. D:\\Fotos"
+        },
+        "out_dir": {
+          "type": "string",
+          "description": "Output folder to validate and show; default <path>_zips"
+        },
+        "limit": {
+          "type": "string",
+          "default": "990mb",
+          "description": "Maximum size of each ZIP: '990mb', '25mb', '2gb', '990mib' or bytes"
+        },
+        "margin": {
+          "type": "string",
+          "default": "5mb",
+          "description": "Safety margin subtracted from the limit"
+        },
+        "prefix": {
+          "type": "string",
+          "default": "part"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "name",
+            "size"
+          ],
+          "default": "name"
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "stored",
+            "deflated"
+          ],
+          "default": "stored",
+          "description": "'stored' (no compression, exact sizes) or 'deflated'"
+        },
+        "too_large": {
+          "type": "string",
+          "enum": [
+            "skip",
+            "fail",
+            "move",
+            "split"
+          ],
+          "default": "skip",
+          "description": "Files that alone exceed the limit: skip, fail, move (to too_large/) or split (raw volumes .zip.001, .002...)"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only files matching one of these globs, e.g. ['*.jpg']"
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Skip files or folders matching these globs, e.g. ['*.tmp', 'node_modules']"
+        },
+        "list_files": {
+          "type": "boolean",
+          "default": false,
+          "description": "List every file of every part instead of a short sample"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Needed when the source is a whole drive root"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_zip_split",
+    "description": "Split a folder into ZIPs under a size limit. Keywords: partir en zips, comprimir por partes, zip de 990 MB.\nCreates part_001.zip, part_002.zip... in out_dir (default <folder>_zips, never inside the source), each guaranteed <= limit (checked before adding each file, measured when closed). Keeps folder structure and writes manifest.txt. Output folder must be empty or new unless overwrite=true; refuses drive roots, Windows, Program Files and the profile root. Runs as a job: wait=true blocks and returns every part, wait=false then use disk_zip_status.\nSinónimos: parte esta carpeta en zips, zips de 25 MB para el correo.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute folder to split, e.g. D:\\Fotos"
+        },
+        "out_dir": {
+          "type": "string",
+          "description": "Output folder; default <path>_zips next to the source"
+        },
+        "limit": {
+          "type": "string",
+          "default": "990mb",
+          "description": "Maximum size of each ZIP: '990mb', '25mb', '2gb', '990mib' or bytes"
+        },
+        "margin": {
+          "type": "string",
+          "default": "5mb",
+          "description": "Safety margin subtracted from the limit"
+        },
+        "prefix": {
+          "type": "string",
+          "default": "part"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "name",
+            "size"
+          ],
+          "default": "name"
+        },
+        "compression": {
+          "type": "string",
+          "enum": [
+            "stored",
+            "deflated"
+          ],
+          "default": "stored",
+          "description": "'stored' (no compression, exact sizes) or 'deflated'"
+        },
+        "too_large": {
+          "type": "string",
+          "enum": [
+            "skip",
+            "fail",
+            "move",
+            "split"
+          ],
+          "default": "skip",
+          "description": "Files alone bigger than the limit: 'skip' (default), 'fail' (refuse to start), 'split' (own ZIP cut in raw volumes name.zip.001, .002...; open the .001 with 7-Zip or join with `copy /b`) or 'move' (MOVES the original to out_dir/too_large/; needs confirm=true)"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Only files matching one of these globs, e.g. ['*.jpg']"
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Replaces the default excludes (Thumbs.db, desktop.ini, .DS_Store, *.tmp, ~$*)"
+        },
+        "overwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Replace existing parts with the same prefix (nothing else is touched)"
+        },
+        "manifest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Write manifest.txt in the output folder"
+        },
+        "confirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Required for too_large='move' (moves user files) and for a whole drive as source"
+        },
+        "wait": {
+          "type": "boolean",
+          "default": true,
+          "description": "Block until the job ends"
+        },
+        "timeout_s": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 3600,
+          "default": 150,
+          "description": "Maximum seconds to wait when wait=true (default 150, under an assistant's usual 180 s call limit); past it the job keeps running"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ]
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_zip_status",
+    "description": "Progress of a ZIP split job. Keywords: estado del zip, progreso, cuánto falta.\nBytes done and total, current file, part number and, when finished, the summary with every part and its real size. Without job it reports the last one.\nSinónimos: cómo va el zip, qué parte lleva, ya ha terminado de comprimir.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "type": "string",
+          "description": "Job id returned by disk_zip_split; omit for the last job"
+        },
+        "wait_s": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 150,
+          "default": 0,
+          "description": "Wait up to this many seconds for the job to finish before answering"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  },
+  {
+    "name": "disk_zip_cancel",
+    "description": "Cancel the running ZIP split job. Keywords: cancelar zip, parar la compresión, detener.\nClosed parts stay; the part being written is deleted, so no half-written ZIP is left behind.\nSinónimos: para el zip, cancela la compresión, detén la división en partes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "type": "string",
+          "description": "Job id; omit for the last job"
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "module": "disk"
+  }
+]

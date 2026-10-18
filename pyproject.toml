@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "talos-hoard"
+version = "1.0.0"
+description = "Talos's Hoard: native modules with independent OFF defaults"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{name = "Luissalet"}]
+dependencies = ["fastapi==0.146.0", "starlette==1.9.0", "uvicorn==0.54.0", "pydantic==2.14.1", "httpx==0.28.1", "mcp==1.30.0", "pillow==13.0.0", "numpy==2.5.4", "mss==10.2.0", "psutil==7.2.2", "rapidocr==3.10.0", "onnxruntime==1.31.0", "python-multipart==0.0.32", "pyperclip==1.11.0", "sounddevice==0.5.6", "SoundCard==0.4.6", "faster-whisper==1.2.1", "av==19.0.1", "webrtcvad-wheels==2.0.14.post1", "pywin32==312; sys_platform == \"win32\"", "winocr>=0.0.13; sys_platform == \"win32\"", "pytesseract>=0.3.10"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+talos-hoard = "talos_hoard.__main__:main"
+
+[tool.setuptools]
+py-modules = ["mcp_server"]
+
+[tool.setuptools.packages.find]
+include = ["talos_hoard*", "argus*", "echo*", "funes_hoard*", "cassandra_hoard*", "diskhoard*"]
+
+[tool.setuptools.package-data]
+"*" = ["static/**/*", "web/**/*", "catalog.json", "travel/tables/*.json"]
