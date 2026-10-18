@@ -2,7 +2,8 @@
 
 Verified on Windows with isolated synthetic histories. Original histories were not opened by the test servers.
 
-- Product suite: 14 passed, including independent OFF defaults, saved state, native module APIs, Funes audio compatibility, strict switch values and retained external data locations.
+- Product suite: 15 passed, including independent OFF defaults, saved state, native module APIs, Funes audio compatibility, strict switch values and retained external data locations.
+- Retired services are excluded after merging discovery and saved restart overrides. A regression reproduced the old Argus restart command remaining active, then passed with the fix; the saved settings file stays unchanged.
 - Streaming: the first SSE event arrives before the producer completes; disabling cancels a live stream before closing its engine. Media responses retain native streaming and range support.
 - Shutdown: OFF intent persists before a deliberately blocked shutdown; the dashboard remains responsive.
 - Actual stdio MCP: discovery of 93 tools, disabled call rejection, clipboard enable/call/disable and rejection after disable all passed. Discovery does not launch the server.

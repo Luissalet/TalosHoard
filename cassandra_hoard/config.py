@@ -52,6 +52,7 @@ class Config:
     bus: bool = True  # mirror the Hoard Hub's event bus (the audit trail)
     job_incidents: bool = True  # open an incident when an app's job fails on the mirrored bus (needs the bus)
     hub_registry: bool = True  # take the app list from the hub when it answers (scan manifests otherwise)
+    retired_ids: tuple[str, ...] = ()  # absorbed identities cannot own a standalone process
     allowed_hosts: tuple[str, ...] = ()
     data_dir_configured: bool = False
     boop_enabled: bool = False

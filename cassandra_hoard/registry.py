@@ -453,7 +453,8 @@ class Registry:
             for sid, policy in self._file["policies"].items():
                 if sid in merged and not any(e["id"] == sid and "restart" in e for e in self._file["services"]):
                     merged[sid].restart = RestartPolicy.from_dict(policy)
-            self._services = merged
+            retired = set(self.config.retired_ids)
+            self._services = {sid: service for sid, service in merged.items() if sid not in retired}
             return self.list()
 
     def list(self) -> list[Service]:
