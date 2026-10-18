@@ -1,0 +1,1229 @@
+{
+  "owner": "talos",
+  "owner_url": "http://127.0.0.1:5220",
+  "tools": [
+    {
+      "schema": {
+        "name": "svc_status",
+        "description": "Is it up? Live status of every local AI service and app / ¿Está caído? Estado actual de servicios\nOne service or all: state (up, degraded, foreign, down, never_seen), since when, latency, pid, uptime, open incident, restart policy. Includes machine boot time and GPUs now.\nSinónimos: estado, caído, funciona, arriba, abajo, servicio, puerto, Faustus, Ollama, llama-server, ComfyUI, hub, app.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "service": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Service id, name or port (e.g. 'faustus', 'Argus', '8081'); omit for every service.",
+              "title": "Service"
+            }
+          },
+          "title": "StatusArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "svc_incidents",
+        "description": "Incidents (service down, restarted) in a time window / Incidencias y caídas en un intervalo de tiempo\nFilter by since/until or at='04:00' ± window_min, by service, or only open ones. Each has the probable cause and what else changed. Also lists reboots and periods when Cassandra itself was not running.\nSinónimos: qué pasó, caídas, incidencias, anoche, a las 4, se paró todo, cortes, historial.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "service": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only this service (id, name or port).",
+              "title": "Service"
+            },
+            "open_only": {
+              "default": false,
+              "description": "Only incidents that are still open (service still down).",
+              "title": "Open Only",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "IncidentsArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "svc_why_down",
+        "description": "Why did a service stop? Latest incident explained with its cause / ¿Por qué se paró? Causa probable\nPlain sentences: when it fell, for how long, probable cause (reboot, sleep, several services at once, VRAM contention, Traceback in the log, process gone or hung), GPUs just before, last log lines, restart attempts.\nSinónimos: por qué, causa, motivo, se cayó, se paró, crash, error, explicación.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "service": {
+              "description": "Service id, name or port.",
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Service",
+              "type": "string"
+            },
+            "incident_id": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A specific incident instead of the latest one.",
+              "title": "Incident Id"
+            }
+          },
+          "required": [
+            "service"
+          ],
+          "title": "WhyArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "logs_search",
+        "description": "Search the logs of every local service by words, service and time / Buscar en los logs por texto y hora\nLines tailed from each app's data/logs, the launcher's logs and configured files, with time and level (error, warning, info). Use at='04:00' to read what happened around a moment.\nSinónimos: logs, registros, trazas, error, traceback, buscar en logs, qué dijo, mensajes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "query": {
+              "default": "",
+              "description": "Words that must all appear in the line (case-insensitive); empty = any line.",
+              "maxLength": 300,
+              "title": "Query",
+              "type": "string"
+            },
+            "service": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only lines from this service's logs.",
+              "title": "Service"
+            },
+            "level": {
+              "anyOf": [
+                {
+                  "pattern": "^(error|warning|info|debug)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "error, warning (includes errors), info or debug.",
+              "title": "Level"
+            },
+            "limit": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "LogsArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "gpu_timeline",
+        "description": "GPU memory and load over time, peaks and which GPU is free now / Memoria de GPU en el tiempo, cuál está libre\nCompact series per GPU (mem % max/avg, util % max) from nvidia-smi samples, peak moments, current free memory and the freest GPU.\nSinónimos: GPU, VRAM, memoria de vídeo, tarjeta gráfica, libre, ocupada, carga, nvidia, picos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "gpu": {
+              "anyOf": [
+                {
+                  "maximum": 64,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only this GPU index.",
+              "title": "Gpu"
+            },
+            "points": {
+              "default": 48,
+              "description": "Buckets in the returned series.",
+              "maximum": 500,
+              "minimum": 4,
+              "title": "Points",
+              "type": "integer"
+            }
+          },
+          "title": "GpuArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "svc_history",
+        "description": "Up/down timeline of one service: state changes and uptime / Historial de estados de un servicio\nState at the start of the window, every change (state, pid restart, restart action) with its time, segments and uptime percentage.\nSinónimos: historial, cronología, cuándo estuvo caído, disponibilidad, uptime, cambios de estado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "service": {
+              "description": "Service id, name or port.",
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          "required": [
+            "service"
+          ],
+          "title": "HistoryArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "audit_search",
+        "description": "What the assistant and the apps did: agent calls and app events by time / Qué hizo el asistente, auditoría\nThe family bus mirrored from the Hoard Hub: one agent.call per tool run (app, tool, ok, ms, who asked), app milestones (scribe.transcript.done, links.watch.new), hub actions (backups, rules, starts). Filter by words, type glob, app, tool, failures, and time (at='03:12').\nSinónimos: auditoría, qué hizo, quién llamó, historial de acciones, eventos, llamadas del agente, qué pasó justo antes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "query": {
+              "default": "",
+              "description": "Words that must appear in the event (type, source or data).",
+              "maxLength": 300,
+              "title": "Query",
+              "type": "string"
+            },
+            "type": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Event type glob, e.g. agent.call, scribe.*, hub.backup.*; | joins several.",
+              "title": "Type"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only events from this app id (or 'hub').",
+              "title": "Source"
+            },
+            "tool": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only agent.call events for this tool.",
+              "title": "Tool"
+            },
+            "failed": {
+              "default": false,
+              "description": "Only failed agent calls.",
+              "title": "Failed",
+              "type": "boolean"
+            },
+            "limit": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "AuditSearchArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "audit_stats",
+        "description": "Counts of agent calls per app and tool, failures, slowest, busiest callers / Estadísticas de uso del agente\nOver a window (default 7 days): events by type and source, agent.call per app/tool with failed count and avg/max ms, callers, and the last failures.\nSinónimos: estadísticas, cuántas veces, herramienta más usada, fallos, uso del agente, resumen de actividad.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            }
+          },
+          "title": "AuditStatsArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "secrets_audit",
+        "description": "Leaked secrets in app folders: tokens, data/ ignored, tracked .env or db / Auditoría de secretos\nPer app: token file present (and its permissions), data/ in .gitignore, secret-looking files tracked by git (mcp-token, .env, *.key, databases), .env files. Read-only.\nSinónimos: secretos, tokens, fugas, .env, gitignore, seguridad, qué está en git, credenciales.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "service": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only this app (id, name or port); omit for every app folder.",
+              "title": "Service"
+            }
+          },
+          "title": "SecretsArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "faustus_attention",
+        "description": "Is Faustus waiting for me? Approvals, questions, stalled runs / ¿Me espera Faustus? Aprobaciones pendientes\nRead from Faustus's own attention list with a read-only token: what each chat is waiting for, for how long, the long waits (≥ wait_min) and runs that stopped sending events. Says why when it cannot read it (no token, refused, Faustus down).\nSinónimos: aprobación pendiente, me espera, atascado, turno parado, pregunta abierta, Faustus esperando, atención.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "wait_min": {
+              "default": 10,
+              "description": "Waits at least this long (minutes) are listed as long waits.",
+              "maximum": 1440,
+              "minimum": 0,
+              "title": "Wait Min",
+              "type": "number"
+            }
+          },
+          "title": "FaustusAttentionArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "faustus_farm",
+        "description": "What is Faustus running now? Runs, sub-agents, jobs, budget / ¿Qué está haciendo Faustus ahora?\nEvery chat turn in flight with the sub-agents it started, dispatched jobs and their workers, a night shift, workflow runs and scheduled tasks: title, kind, model, state, how long, progress. Plus the period budget (window used against pace, GPU seconds today, failure breaker, provider cooldowns). Names only, never message text. Says why when it cannot read it (no token, refused, Faustus down or too old).\nSinónimos: qué está corriendo, agentes en marcha, subagentes, trabajos, turno en curso, presupuesto, ritmo, GPU hoy, breaker, cooldown, Faustus ocupado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "include_budget": {
+              "default": true,
+              "description": "Also return the period budget (pace, GPU seconds today, breaker, cooldowns). False = only what is running.",
+              "title": "Include Budget",
+              "type": "boolean"
+            }
+          },
+          "title": "FaustusFarmArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "sites_status",
+        "description": "Are my public websites up? Latency, certificate and domain days left / ¿Están mis webs públicas bien?\nEvery watched site (or one): up/down, HTTP status, latency, redirect, certificate days left and issuer, DNS answers, domain registration expiry (RDAP), last change, open incident, warnings.\nSinónimos: web caída, mi página, certificado, caducidad, dominio, TLS, SSL, https, renovación, disponibilidad.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "site": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Site id, name or host (e.g. 'example.com'); omit for every site.",
+              "title": "Site"
+            }
+          },
+          "title": "SitesStatusArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "site_history",
+        "description": "Up/down history of one public website: changes, uptime, latency / Historial de una web pública\nState changes (down, up, certificate renewed or expiring, DNS answers changed), uptime percentage, latency avg/p95/max with a series, and its incidents with cause.\nSinónimos: historial de la web, cuándo estuvo caída, disponibilidad, uptime, latencia, certificado renovado.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start: ISO time, clock time ('03:50') or age ('2h'). Default 24 h ago.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End (same formats). Default now.",
+              "title": "Until"
+            },
+            "at": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Centre of a window instead of since/until, e.g. '04:00'.",
+              "title": "At"
+            },
+            "window_min": {
+              "default": 15,
+              "description": "Half-width of the `at` window in minutes.",
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Window Min",
+              "type": "number"
+            },
+            "site": {
+              "description": "Site id, name or host.",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Site",
+              "type": "string"
+            }
+          },
+          "required": [
+            "site"
+          ],
+          "title": "SiteHistoryArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "svc_restart",
+        "description": "Restart or start one service now (only when the user asks) / Reiniciar o arrancar un servicio ahora\nUses its restart command, the Hoard Hub launcher or the app's launch hint; recorded in the open incident. Refuses when another program holds the port.\nSinónimos: reiniciar, arrancar, levantar, relanzar, volver a encender, restart, start.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "service": {
+              "description": "Service id, name or port.",
+              "maxLength": 120,
+              "minLength": 1,
+              "title": "Service",
+              "type": "string"
+            }
+          },
+          "required": [
+            "service"
+          ],
+          "title": "RestartArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "svc_watch",
+        "description": "Add or edit a watched service: URL, health path, logs, restart policy / Añadir o editar un servicio vigilado\nSaved in data/services.json. An existing id (also a discovered app or built-in) is edited; restart.enabled turns on automatic restarts (opt-in, max_per_hour). Only when the user asks.\nSinónimos: vigilar, monitorizar, añadir servicio, nuevo servicio, política de reinicio, logs de un servicio.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$defs": {
+            "RestartPolicyArgs": {
+              "properties": {
+                "enabled": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "Restart automatically when it goes down (opt-in).",
+                  "title": "Enabled"
+                },
+                "cmd": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "Command to start it (shell string or argv list). Needs CASSANDRA_AGENT_COMMANDS=1 from the assistant.",
+                  "title": "Cmd"
+                },
+                "cwd": {
+                  "anyOf": [
+                    {
+                      "maxLength": 2000,
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "Working directory for cmd.",
+                  "title": "Cwd"
+                },
+                "max_per_hour": {
+                  "anyOf": [
+                    {
+                      "maximum": 60,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null,
+                  "description": "Maximum automatic restarts per hour (default 3).",
+                  "title": "Max Per Hour"
+                }
+              },
+              "title": "RestartPolicyArgs",
+              "type": "object"
+            }
+          },
+          "properties": {
+            "id": {
+              "description": "Lowercase id (letters, digits, . _ -). An existing id edits that service.",
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Base URL, e.g. http://127.0.0.1:9000 (required for a new service).",
+              "title": "Url"
+            },
+            "health_path": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Path probed for health, e.g. /health (default /).",
+              "title": "Health Path"
+            },
+            "expect": {
+              "anyOf": [
+                {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "JSON key/value the answer must contain; value '*' = key present.",
+              "title": "Expect"
+            },
+            "log_paths": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 50,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Log files or globs to tail for this service.",
+              "title": "Log Paths"
+            },
+            "restart": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RestartPolicyArgs"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "WatchArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "sites_watch",
+        "description": "Add, edit or remove a watched public website / Añadir, editar o quitar una web pública vigilada\nSaved in data/sites.json: url, expected status, keyword, check interval, pause. Removing keeps its history. Changes the watch list: only when the user asks.\nSinónimos: vigilar una web, añadir sitio, quitar sitio, monitorizar página, palabra clave, intervalo de comprobación.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "action": {
+              "description": "add a site, edit one (only the fields you pass change) or remove it from the list (its history stays).",
+              "enum": [
+                "add",
+                "edit",
+                "remove"
+              ],
+              "title": "Action",
+              "type": "string"
+            },
+            "id": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Lowercase id (letters, digits, . _ -). Required for edit and remove; add derives it from the url.",
+              "title": "Id"
+            },
+            "url": {
+              "anyOf": [
+                {
+                  "maxLength": 500,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Home page, e.g. https://example.com/ (required for add).",
+              "title": "Url"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "expect_status": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 20,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Accepted HTTP statuses: '2xx', '301', '200-299'. Default ['2xx','3xx'].",
+              "title": "Expect Status"
+            },
+            "keyword": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Text the home page must contain (case-insensitive); empty string removes it.",
+              "title": "Keyword"
+            },
+            "interval_min": {
+              "anyOf": [
+                {
+                  "maximum": 1440,
+                  "minimum": 1,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Minutes between checks (default 5, minimum 1).",
+              "title": "Interval Min"
+            },
+            "enabled": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "false pauses the checks.",
+              "title": "Enabled"
+            },
+            "domain": {
+              "anyOf": [
+                {
+                  "maxLength": 253,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Registrable domain for the RDAP expiry lookup when the automatic guess is wrong (e.g. example.co.uk).",
+              "title": "Domain"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "SitesWatchArgs",
+          "type": "object"
+        }
+      },
+      "module": "services",
+      "token_file": "data/native/services/data/mcp-token"
+    }
+  ]
+}

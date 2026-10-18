@@ -1,0 +1,1421 @@
+{
+  "owner": "talos",
+  "owner_url": "http://127.0.0.1:5220",
+  "tools": [
+    {
+      "schema": {
+        "name": "scribe_status",
+        "description": "Is a recording in progress? Backend, devices, model and queue. Keywords: estado, grabando, micrófono.\nWhether a recording is in progress (title, elapsed time, tracks), which audio backend and devices exist, the transcription model and its download state, and queue depth.\nSinónimos: estado, grabando, está grabando, micrófono, modelo, transcripción, dispositivos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "description": "A tool without arguments.",
+          "properties": {},
+          "title": "Empty",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_sessions",
+        "description": "List recorded sessions newest first, with filters. Keywords: reuniones, grabaciones, sesiones, notas de voz.\nList recorded sessions (meetings, interviews, voice notes, imports) newest first with title, when, duration, kind, tags and the first transcribed line. Filter by words, kind, tag and dates.\nSinónimos: reunión, entrevista, llamada, nota de voz, sesiones, grabaciones, qué reuniones, ayer, esta semana, lista.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "q": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Words in the title or transcript.",
+              "title": "Q"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "meeting",
+                    "interview",
+                    "note",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "meeting | interview | note | other",
+              "title": "Kind"
+            },
+            "tag": {
+              "anyOf": [
+                {
+                  "maxLength": 40,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tag"
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sessions started after this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+              "title": "From"
+            },
+            "to": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sessions started before this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+              "title": "To"
+            },
+            "limit": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "SessionsArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_transcript",
+        "description": "Transcript of one session with speakers and timestamps, paginated. Keywords: transcripción, qué se dijo.\nTranscript of one session with speaker labels (yo/otros from the audio channel) and timestamps, paginated by time (from_s/to_s, next_from_s). Read it before summarising or quoting a session.\nSinónimos: transcripción, qué dijeron, qué se dijo, leer la reunión, hablaron de, entrevista, llamada. (Para el acta o los acuerdos usa scribe_minutes.)",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "from_s": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Start offset in seconds (page through long sessions).",
+              "title": "From S"
+            },
+            "to_s": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "End offset in seconds.",
+              "title": "To S"
+            },
+            "max_chars": {
+              "default": 12000,
+              "description": "Cut the page here; the reply tells you where to continue.",
+              "maximum": 60000,
+              "minimum": 500,
+              "title": "Max Chars",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "TranscriptArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_search",
+        "description": "Search every transcript by words, grouped by session. Keywords: cuándo hablamos de, buscar en reuniones.\nFull-text search across every transcript: hits grouped by session with time offset, speaker and a snippet. Best first step for 'when did we talk about X'.\nSinónimos: buscar, hablaron de, cuándo dijimos, salario, presupuesto, mencionaron, en qué reunión, reunión, entrevista, transcripción.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "q": {
+              "description": "Words to find (all must appear; last word matches as prefix).",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "meeting",
+                    "interview",
+                    "note",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Kind"
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sessions started after this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+              "title": "From"
+            },
+            "to": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Sessions started before this. ISO date/datetime (2026-03-01, 2026-03-01T09:00), or 'hoy', 'ayer', 'esta semana', 'hace 3 días', 'today', 'yesterday'.",
+              "title": "To"
+            },
+            "limit": {
+              "default": 40,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "q"
+          ],
+          "title": "SearchArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_start",
+        "description": "Start recording a new session (only when the user asks now). Keywords: graba, empieza a grabar, reunión.\nStart recording a new session (microphone = 'yo', system audio = 'otros'). Only when the user explicitly asks in the current message; not destructive. Tell the user recording has started and that scribe_stop stops it.\nSinónimos: grabar, empieza a grabar, graba la reunión, graba la entrevista, nota de voz, grabación, llamada.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "title": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "kind": {
+              "default": "meeting",
+              "enum": [
+                "meeting",
+                "interview",
+                "note",
+                "other"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "mic": {
+              "default": true,
+              "description": "Capture the microphone (the user, labelled 'yo').",
+              "title": "Mic",
+              "type": "boolean"
+            },
+            "system": {
+              "default": true,
+              "description": "Capture system audio / loopback (the others, labelled 'otros'). Windows only.",
+              "title": "System",
+              "type": "boolean"
+            },
+            "language": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "es",
+                "en"
+              ],
+              "title": "Language",
+              "type": "string"
+            }
+          },
+          "title": "StartArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_stop",
+        "description": "Stop the recording in progress; the final transcription runs in the background and replaces the live one.\nSinónimos: parar, detener, deja de grabar, termina la grabación, fin de la reunión.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "SessionIdArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_note",
+        "description": "Append text to a session's notes (decisions, action items, a summary the user approved).\nAn identical trailing note is returned with existing=true instead of appended again.\nSinónimos: nota, apunta, añade a las notas, apuntes de la sesión.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "notes": {
+              "description": "Text appended to the session notes.",
+              "maxLength": 20000,
+              "minLength": 1,
+              "title": "Notes",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id",
+            "notes"
+          ],
+          "title": "NoteArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_tag",
+        "description": "Add or remove tags on a session (idempotent: existing tags are kept once).\nSinónimos: etiqueta, etiquetar, categoría, marcar, cliente, proyecto.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "add": {
+              "description": "Tags to add (lower-cased, deduplicated).",
+              "items": {
+                "type": "string"
+              },
+              "title": "Add",
+              "type": "array"
+            },
+            "remove": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Remove",
+              "type": "array"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "TagArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_export",
+        "description": "Render a session as text, SRT or Markdown (md includes notes and minutes). Exportar.\nReturns the transcript as plain text, SRT subtitles or Markdown; the Markdown also carries the notes and, when they exist, the minutes.\nSinónimos: exportar, subtítulos, markdown, texto, descargar la transcripción, exportar el acta.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "format": {
+              "default": "md",
+              "enum": [
+                "txt",
+                "srt",
+                "md"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "ExportArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_minutes",
+        "description": "Meeting minutes of a session: summary, decisions, action items with evidence. Acta de reunión.\nWrites (or returns the stored) minutes of a transcribed session with the local model: summary, decisions, action items {owner yo|name, action, counterpart, due_date/due_text, evidence {start_s, end_s, speaker, literal quote}}, open questions and participants. Every action item's quote is verified against the transcript and items without one are dropped. status: ready | no_model (no local language model; nothing was invented) | not_ready (still transcribing) | no_speech | error. regenerate=true replaces stored minutes. Long meetings can take minutes.\nSinónimos: acta, minutas, resumen de la reunión, acuerdos, tareas pendientes, qué se acordó, quién se comprometió, compromisos, action items, decisiones.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            },
+            "regenerate": {
+              "default": false,
+              "description": "Write the minutes again with the model even if some are stored (the old ones are replaced).",
+              "title": "Regenerate",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "MinutesArgs",
+          "type": "object",
+          "x-timeout-s": 1800.0
+        },
+        "x-timeout-s": 1800.0
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "minutes_get",
+        "description": "Minutes of a meeting for other apps: title, date, attendees, action items with owner and due, summary.\nReturns the minutes (acta) of a transcribed meeting session in a compact shape: {title, date, attendees: [names], action_items: [{text, owner (yo | a name | empty), counterpart, due (YYYY-MM-DD or null), due_text, quote}], summary, decisions, open_questions}. Writes them with the local model when none are stored (generate=true, the default); status is ready, or no_model, not_ready, no_speech, not_generated. minutes_id is the session id announced by funes.minutes.ready.\nSinónimos: acta, minutas, asistentes, quién estuvo en la reunión, tareas de la reunión, acuerdos, resumen de la reunión.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "minutes_id": {
+              "description": "Id of the meeting session whose minutes you want (the minutes_id of funes.minutes.ready).",
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Minutes Id",
+              "type": "string"
+            },
+            "generate": {
+              "default": true,
+              "description": "Write the minutes with the local model when none are stored. false only reads what is stored.",
+              "title": "Generate",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "minutes_id"
+          ],
+          "title": "MinutesGetArgs",
+          "type": "object",
+          "x-timeout-s": 1800.0
+        },
+        "x-timeout-s": 1800.0
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_import_file",
+        "description": "Import a local audio/video file as a session and optionally wait for its transcript. Importar audio.\nCreates a session from a file already on this computer, by absolute path (the original is copied, never moved or deleted), and transcribes it in the background. With wait_s > 0 it waits up to that many seconds and returns {session, status, transcript_text} (cut at 60000 characters with next_from_s to continue). Use it to get the text of a recorded class, call or video.\nSinónimos: importar audio, importar vídeo, transcribir un archivo, transcribe este vídeo, pasar a texto, grabación existente, mp3, mp4, subir audio.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "path": {
+              "description": "Absolute path of an audio/video file on this computer (wav, mp3, m4a, mp4, mkv, webm...).",
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Path",
+              "type": "string"
+            },
+            "title": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Title",
+              "type": "string"
+            },
+            "kind": {
+              "default": "other",
+              "enum": [
+                "meeting",
+                "interview",
+                "note",
+                "other"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "language": {
+              "default": "auto",
+              "enum": [
+                "auto",
+                "es",
+                "en"
+              ],
+              "title": "Language",
+              "type": "string"
+            },
+            "wait_s": {
+              "default": 0,
+              "description": "Seconds to wait for the transcription to finish. 0 returns the session at once; poll scribe_sessions or scribe_transcript later.",
+              "maximum": 3600,
+              "minimum": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "title": "ImportFileArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "transcribe_file",
+        "description": "Speech to text of an audio/video file by path, no session kept. Transcribir un archivo.\nTranscribes a file already on this computer (absolute path) and returns {job_id, status, progress, language, duration_s, text, segments [{start_s, end_s, text, words}], model, device, note, stats}; with wait_s (max 150) it waits for the result, otherwise poll transcribe_status. Nothing is stored in Funes: no session, no copy of the file. For the user's own recordings use scribe_import_file.\nSinónimos: transcribir, pasar a texto, audio a texto, subtítulos de un vídeo, dictado, speech to text.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "path": {
+              "description": "Absolute path of an audio/video file on this computer (wav, mp3, m4a, mp4, mkv, webm...). Paths, never bytes.",
+              "maxLength": 1024,
+              "minLength": 1,
+              "title": "Path",
+              "type": "string"
+            },
+            "language": {
+              "default": "auto",
+              "description": "'auto' (detect it) or a language code such as 'es' or 'en'.",
+              "maxLength": 12,
+              "title": "Language",
+              "type": "string"
+            },
+            "model": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Whisper size (tiny, base, small, medium, large-v3...). Empty: the one Funes is configured with.",
+              "title": "Model"
+            },
+            "word_timestamps": {
+              "default": true,
+              "description": "Timestamp every word.",
+              "title": "Word Timestamps",
+              "type": "boolean"
+            },
+            "initial_prompt": {
+              "default": "",
+              "description": "Names and jargon to prime the model with.",
+              "maxLength": 1000,
+              "title": "Initial Prompt",
+              "type": "string"
+            },
+            "vad": {
+              "default": true,
+              "description": "Skip silence before decoding.",
+              "title": "Vad",
+              "type": "boolean"
+            },
+            "wait_s": {
+              "default": 0,
+              "description": "Seconds to wait for the job (max 150). 0 returns {job_id, status} at once; poll transcribe_status.",
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "title": "TranscribeFileArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "transcribe_status",
+        "description": "State and result of a transcription job started with transcribe_file.\nSame answer as transcribe_file; wait_s (max 150) waits for it to finish. Finished jobs are kept for an hour.\nSinónimos: cómo va la transcripción, estado del trabajo, resultado de la transcripción.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "job_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Job Id",
+              "type": "string"
+            },
+            "wait_s": {
+              "default": 0,
+              "description": "Seconds to wait for the job to finish (max 150).",
+              "maximum": 150,
+              "minimum": 0,
+              "title": "Wait S",
+              "type": "number"
+            }
+          },
+          "required": [
+            "job_id"
+          ],
+          "title": "TranscribeStatusArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "transcribe_cancel",
+        "description": "Cancel a transcription job started with transcribe_file (idempotent).\nA finished job is left as it is and its own status returned.\nSinónimos: cancelar la transcripción, parar el trabajo.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "job_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "job_id"
+          ],
+          "title": "TranscribeCancelArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "scribe_delete",
+        "description": "Permanently delete a session (only when asked; no undo). Keywords: borrar grabación, eliminar sesión.\nPermanently delete a session: audio, transcript and notes. Only when the user explicitly asks; there is no undo.\nSinónimos: borrar, eliminar, borra la grabación, elimina la reunión, olvidar.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "session_id": {
+              "maxLength": 64,
+              "minLength": 1,
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          "required": [
+            "session_id"
+          ],
+          "title": "SessionIdArgs",
+          "type": "object"
+        }
+      },
+      "module": "audio",
+      "token_file": "data/native/activity/data/audio/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_now",
+        "description": "What the user is doing right now: app, window, project, idle time. Qué estoy haciendo ahora.\n\nWhat the user is doing right now: the foreground app, window title,\ncategory and project, how long it has been open (`since`), idle seconds,\nand whether recording is on or paused (`paused_until`). While paused no\ncurrent window is reported. Use it for \"what am I doing?\" or \"are you\nrecording me?\".\nKeywords: what am I doing, current window, right now, idle, am I being recorded, is it paused, qué estoy haciendo, que estoy haciendo, ahora mismo, ventana actual, está grabando, pausado.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "activity_nowArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_agents_day",
+        "description": "Recorded agent events in a day: Faustus turns, closed Agora tasks and commits.\n\nRead-only. day accepts yesterday/ayer or a date. kind is turn, task or commit,\nomitted for all. Sources and timestamps stay explicit; a Git author is not\nan agent identity and events are not inferred hours of work. Check truncated,\nsources and has_more before claiming complete coverage; use next_offset to\ncontinue. The Hub's retention window and task limit can leave older days partial.\nKeywords: agent activity, what did agents do yesterday, closed tasks, commits,\nactividad de agentes, qué hicieron los agentes ayer, tareas cerradas, diario.\n",
+        "inputSchema": {
+          "properties": {
+            "day": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Day"
+            },
+            "limit": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Kind"
+            }
+          },
+          "title": "activity_agents_dayArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_where_was_i",
+        "description": "Where was I: the last things worked on before a moment, to resume. Por dónde iba, retomar.\n\nLast distinct contexts, newest first (known projects ahead of bare apps), each with its last window titles, time range (`human`), duration, up to 5 opened files and 5 commits. Away time and alt-tab blips are skipped. A title naming a file shows it was in the foreground, not that it was edited; no recorded commit does not imply uncommitted changes.\nKeywords: where was I, resume, what was I working on, dónde estaba, dónde lo dejé, en qué estaba trabajando, retomar.\n",
+        "inputSchema": {
+          "properties": {
+            "before": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Look back from this moment; default now. \"ayer\"/\"yesterday\" = end of yesterday, \"-2h\" = two hours ago, a weekday name (\"martes\", \"last tuesday\") = that whole day.",
+              "title": "Before"
+            },
+            "contexts": {
+              "default": 5,
+              "description": "Distinct contexts to return, 1-20.",
+              "title": "Contexts",
+              "type": "integer"
+            },
+            "all_categories": {
+              "default": false,
+              "description": "Also include Media/Communication/Games (music player, chat app), skipped by default.",
+              "title": "All Categories",
+              "type": "boolean"
+            }
+          },
+          "title": "activity_where_was_iArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_project_resume",
+        "description": "Resume one named project from its recent windows, opened files and commits.\n\nUse when asked where work on a specific project stopped, including weeks\nago. Exact project name, case insensitive. Last 30 days by default; days\n1-180, limit 1-10 per evidence type. Foreground titles do not prove edits.\nEmpty results mean no recorded evidence in that interval, not no work.\nKeywords: resume project, where did I leave off on project, project context,\nretomar proyecto, por dónde iba en el proyecto, donde lo dejé en proyecto.\n",
+        "inputSchema": {
+          "properties": {
+            "project": {
+              "title": "Project",
+              "type": "string"
+            },
+            "days": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            },
+            "limit": {
+              "default": 5,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "project"
+          ],
+          "title": "activity_project_resumeArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_timeline",
+        "description": "Timeline of the windows and apps used in a range, with durations. Cronología, qué hice hoy.\n\nSpans in order (one window/app, or away/locked), each with `id`, app, title, category, project, duration and `human` range. A foreground window does not prove edits, commands or causes; do not infer uninterrupted work between spans. For a week or more prefer activity_summary.\nKeywords: timeline, what did I do, activity log, around then, línea de tiempo, qué hice, historial, cronología del día, qué hacía entonces.\n",
+        "inputSchema": {
+          "properties": {
+            "start": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A single day word or date (\"ayer\", \"2026-09-20\") selects that whole day; otherwise range start. Default today.",
+              "title": "Start"
+            },
+            "end": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Range end; default now.",
+              "title": "End"
+            },
+            "min_minutes": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Skip shorter spans. Default 2 for a day or less, 5 for longer ranges, 0 with `around`.",
+              "title": "Min Minutes"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Max spans, up to 100.",
+              "title": "Limit",
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "description": "Use `next_offset` when `has_more` is true.",
+              "title": "Offset",
+              "type": "integer"
+            },
+            "around": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "A search hit's `ts` (or any time): every span 30 min either side.",
+              "title": "Around"
+            }
+          },
+          "title": "activity_timelineArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_summary",
+        "description": "Time totals per category, app or project for a day, week or range. Cuánto tiempo, resumen del día.\n\nActive and away time, totals as seconds (`by_*`) and ready-to-read strings (`by_*_human`), first/last activity, context switches and focus blocks (>= 25 min on one project/category). Answer from the *_human strings.\nKeywords: summary, time spent, how many hours, focus time, week report, resumen del día, cuántas horas, tiempo de foco, productividad, resumen semanal.\n",
+        "inputSchema": {
+          "properties": {
+            "day": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "today/hoy, yesterday/ayer, \"this week\"/\"esta semana\", \"last week\", a weekday name or an ISO date. Default today.",
+              "title": "Day"
+            },
+            "start": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Range start (ISO date or day word) instead of `day`.",
+              "title": "Start"
+            },
+            "end": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Range end; defaults to now.",
+              "title": "End"
+            },
+            "group_by": {
+              "default": "category",
+              "description": "\"category\" | \"app\" | \"project\" | \"all\". Use \"project\" for time on one project.",
+              "title": "Group By",
+              "type": "string"
+            }
+          },
+          "title": "activity_summaryArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_search",
+        "description": "When did a window title, file or commit mention these words. Buscar en mi actividad, cuándo abrí.\n\nHits newest first, each with `source` (span/file/commit), `ref_id`, `ts`, `when` and a short `text` with the match in [brackets]; window hits also carry `duration_s`/`human`. To see what surrounded a hit, call activity_timeline(around=<its ts>).\nKeywords: search, find when, that page about, that file called, that commit, buscar, cuándo vi, cuándo abrí, ese archivo, ese commit.\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Words to find; prefixes count (\"duck\" finds \"DuckDB\"), punctuation ignored. All words must match, else any word is tried and `matched` says \"any word\".",
+              "title": "Query",
+              "type": "string"
+            },
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Day word (\"ayer\" = from yesterday 00:00) or ISO date.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Day word or ISO date; default now.",
+              "title": "Until"
+            },
+            "limit": {
+              "default": 10,
+              "description": "Max hits, up to 100.",
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "activity_searchArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_recent_files",
+        "description": "Files opened recently, newest first, with full paths. Archivos recientes, qué abrí.\n\nFiles the user opened recently (from the Windows Recent Items list),\nnewest first, each with its full path, `when` and file extension\n(`app_hint`). Default window: the last 7 days. `limit` max 100.\nKeywords: recent files, what file did I open, last opened document, which file was I editing, archivos recientes, qué archivo abrí, que archivo abri, último documento, documento abierto.\n",
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Since"
+            },
+            "limit": {
+              "default": 15,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "activity_recent_filesArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_projects",
+        "description": "Projects ranked by time spent and commits since a moment. En qué proyectos he trabajado.\n\nProjects ranked by time spent since a moment through now (default: last\n30 days). This is an open-ended range: `since=\"ayer\"` includes today.\nFor yesterday only, call activity_summary(day=\"ayer\", group_by=\"project\"):\nactive time (`time_human`), when each was last touched, and how many git\ncommits were recorded for it. Projects come from editor window titles\nand known git repo names. `limit` max 100.\nKeywords: projects, time per project, which project did I work on most, last touched, commits per project, proyectos, tiempo por proyecto, en qué proyecto, última vez, commits por proyecto.\n",
+        "inputSchema": {
+          "properties": {
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Since"
+            },
+            "limit": {
+              "default": 10,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "title": "activity_projectsArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "activity_pause",
+        "description": "Pause activity recording for some minutes (write; only when asked). Pausar registro, no me grabes.\n\nPause activity recording for `minutes` (1-1440, default 15), e.g. when\nthe user asks not to be tracked for a while. It only ever extends a\npause: if recording is already paused for longer (or until the user\nresumes), nothing changes and `note` says so. It cannot resume early,\nchange privacy rules, delete history or export data; those need the\nhuman in the app's Privacy screen.\nKeywords: pause recording, stop tracking, don't record, privacy break, pausar grabación, pausar grabacion, deja de grabar, no me grabes, dejar de rastrear un rato.\n",
+        "inputSchema": {
+          "properties": {
+            "minutes": {
+              "default": 15,
+              "title": "Minutes",
+              "type": "number"
+            }
+          },
+          "title": "activity_pauseArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "recall",
+        "description": "What was I doing at a time: screen, clipboard, audio and PC in one call / qué estaba haciendo a esa hora.\n\nCall FIRST for \"what was I doing / qué pasó a las X\". Merged timeline from Funes, Argus (screen), Echo (clipboard) and Scribe (audio); quote each item's bracket `citation` verbatim. `summary.unavailable` lists sources that failed: missing evidence, not proof of no activity. Contradicting memories keep the best supported one and list the rest in `contradictions`.\nKeywords: what was I doing, timeline, recall, qué estaba haciendo, qué pasó, a esa hora, pantalla, portapapeles, audio, con citas.\n",
+        "inputSchema": {
+          "properties": {
+            "at": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "now/ahora, \"a las 16:00\", \"hace 10 minutos\", \"ayer por la tarde\", a weekday name or an ISO date/datetime. Omitted/now also returns `now` (current foreground window).",
+              "title": "At"
+            },
+            "window_minutes": {
+              "default": 15,
+              "description": "Minutes either side of `at`.",
+              "title": "Window Minutes",
+              "type": "number"
+            },
+            "sources": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Limit the fan-out to these source ids, e.g. [\"argus\"].",
+              "title": "Sources"
+            },
+            "limit_per_source": {
+              "default": 20,
+              "title": "Limit Per Source",
+              "type": "integer"
+            },
+            "include_dropped": {
+              "default": false,
+              "description": "Pass true to keep memories dropped as contradictory in items, marked 'descartado por contradiccion' with kept_citation.",
+              "title": "Include Dropped",
+              "type": "boolean"
+            }
+          },
+          "title": "recallArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "recall_search",
+        "description": "Find a topic across screen, clipboard, audio and PC memory / busca un tema en todas las apps.\n\nFull-text search over Funes's history, Argus (screen OCR), Echo (clipboard) and Scribe (transcripts), merged newest first with the same bracket `citation` as recall(). Contradicting memories keep the best supported one and list the rest in `contradictions`. Prefer recall() when the question is about a time.\nKeywords: search everywhere, find across apps, when did I see that, busca en todo, cuándo vi eso, en qué app.\n",
+        "inputSchema": {
+          "properties": {
+            "query": {
+              "description": "Topic to search for (full text).",
+              "title": "Query",
+              "type": "string"
+            },
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Day word (\"ayer\" = from yesterday 00:00) or ISO date/datetime. Default last 7 days.",
+              "title": "Since"
+            },
+            "until": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Day word or ISO date/datetime; default now.",
+              "title": "Until"
+            },
+            "sources": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Limit the fan-out to these source ids, e.g. [\"argus\"].",
+              "title": "Sources"
+            },
+            "limit_per_source": {
+              "default": 20,
+              "title": "Limit Per Source",
+              "type": "integer"
+            },
+            "include_dropped": {
+              "default": false,
+              "description": "Pass true to keep memories dropped as contradictory in items, marked 'descartado por contradiccion' with kept_citation.",
+              "title": "Include Dropped",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "query"
+          ],
+          "title": "recall_searchArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "sources_status",
+        "description": "Whether Argus, Echo and Scribe are reachable for recall / si las fuentes están disponibles.\nHealth of every federated source (id, name, base_url, enabled, `ok` and\na short `reason` when not). Call this when recall/recall_search reports\na source unavailable and the user asks why, or before relying on a\nspecific source.\nKeywords: sources status, is argus running, is echo running, is scribe running, estado de las fuentes, está encendido argus, está encendido echo, está encendido scribe.\n",
+        "inputSchema": {
+          "properties": {},
+          "title": "sources_statusArguments",
+          "type": "object"
+        },
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "module": "activity",
+      "token_file": "data/native/activity/data/mcp-token"
+    }
+  ]
+}

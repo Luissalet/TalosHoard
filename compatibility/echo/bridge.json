@@ -1,0 +1,427 @@
+{
+  "owner": "talos",
+  "owner_url": "http://127.0.0.1:5220",
+  "tools": [
+    {
+      "schema": {
+        "name": "clip_recent",
+        "description": "Recently copied clips, newest first, optionally since '1h'/'hoy'. Keywords: qué copié, portapapeles.\nThe user's most recently copied clips (newest first): kind, preview, source app, when, how many times copied, pinned, label. A sensitive clip comes back with preview `[oculto]`, never the real content.\nSinónimos: portapapeles, últimas copias, qué he copiado, historial del portapapeles, lo último que copié.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "n": {
+              "default": 10,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "N",
+              "type": "integer"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "pattern": "^(text|url|email|path|code|number|image)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Kind"
+            },
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word (hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.",
+              "title": "Since"
+            }
+          },
+          "title": "RecentArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_search",
+        "description": "Search copied text and image OCR. Keywords: buscar copiado, texto en captura.\nFull-text search over clipboard history (text, optional image OCR, label, tags, source window title), diacritics-insensitive. OCR is derived and may contain recognition mistakes. Sensitive clips never surface real content, only `[oculto]`.\nSinónimos: buscar en el portapapeles, texto de imagen copiada, busca la url que copié.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "q": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "pattern": "^(text|url|email|path|code|number|image)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Kind"
+            },
+            "since": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word (hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.",
+              "title": "Since"
+            },
+            "app": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Restrict to one source process name.",
+              "title": "App"
+            },
+            "limit": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "q"
+          ],
+          "title": "SearchArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_get",
+        "description": "Full text of one clip by id (paginated). Keywords: ver clip, texto completo, contenido copiado.\nThe full text of one clip (paginated with max_chars/offset for very long clips). Refuses outright when the clip is flagged sensitive.\nSinónimos: dame el texto completo, pégame lo que copié, contenido completo de la copia.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "id": {
+              "description": "Clip id, as returned by clip_recent or clip_search.",
+              "minimum": 1,
+              "title": "Id",
+              "type": "integer"
+            },
+            "max_chars": {
+              "default": 8000,
+              "maximum": 50000,
+              "minimum": 1,
+              "title": "Max Chars",
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "GetArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_bundle",
+        "description": "Read selected clips together with source and date. Keywords: compare clips, comparar recortes.\nPass IDs from clip_recent or clip_search; returns their texts in the requested order with source app, window title and timestamp, ready to compare or summarise in one chat turn. Each text may be truncated; use clip_get with an offset for the rest.\nSinónimos: compara estas copias, resume estos enlaces, junta estos recortes, analiza estos clips.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "ids": {
+              "description": "Clip IDs in the order the user wants to compare or summarise.",
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 20,
+              "minItems": 1,
+              "title": "Ids",
+              "type": "array"
+            },
+            "max_chars_per_clip": {
+              "default": 8000,
+              "maximum": 20000,
+              "minimum": 1,
+              "title": "Max Chars Per Clip",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "ids"
+          ],
+          "title": "BundleArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_set",
+        "description": "Put text on the clipboard and store it as a clip (write). Keywords: cópiame esto, ponlo en el portapapeles.\nPut text on the user's clipboard and store it as a clip (write, idempotent by content). Use when the user says 'cópiame esto' or 'ponlo en el portapapeles'; always tell them plainly what you put there.\nSinónimos: cópiame esto, ponlo en el portapapeles, copia esto, pon esto en el portapapeles, pásame esto al portapapeles.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "text": {
+              "maxLength": 200000,
+              "minLength": 1,
+              "title": "Text",
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ],
+          "title": "SetArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_copy",
+        "description": "Put an existing clip back on the clipboard by id (write). Keywords: vuelve a copiar, recuperar clip.\nPut an existing clip back on the user's clipboard by id (write). Refuses a sensitive clip unless `allow_sensitive` is true, and even then never returns the content to you.\nSinónimos: pégame el anterior, vuelve a copiar esto, copia ese de nuevo, recupera esa copia, ponlo otra vez en el portapapeles.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "id": {
+              "minimum": 1,
+              "title": "Id",
+              "type": "integer"
+            },
+            "allow_sensitive": {
+              "default": false,
+              "description": "Must be true to copy back a clip flagged sensitive; the content is still never returned to you.",
+              "title": "Allow Sensitive",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "CopyArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_pin",
+        "description": "Pin or unpin a clip and optionally set its label/tags (write). Only when the user asks.\nSinónimos: fija esta copia, guarda esto, marca como favorito, etiqueta esta copia, quita de fijados.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "id": {
+              "minimum": 1,
+              "title": "Id",
+              "type": "integer"
+            },
+            "pinned": {
+              "title": "Pinned",
+              "type": "boolean"
+            },
+            "label": {
+              "anyOf": [
+                {
+                  "maxLength": 300,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Label"
+            },
+            "tags": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "maxItems": 30,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Tags"
+            }
+          },
+          "required": [
+            "id",
+            "pinned"
+          ],
+          "title": "PinArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_delete",
+        "description": "Forget one clip (write, destructive; soft-deleted with a 24h undo window before it is purged for good).\nSinónimos: borra esta copia, olvida esto, elimina del portapapeles, quita esta copia.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "id": {
+              "minimum": 1,
+              "title": "Id",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "title": "DeleteArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_status",
+        "description": "Is Echo watching the clipboard? Counts, storage and retention. Keywords: estado, portapapeles, retención.\nWhether Echo is watching the clipboard, counts of clips/pinned/sensitive, image storage used, retention configuration.\nSinónimos: estado del portapapeles, está vigilando, cuántas copias tengo, está en pausa.",
+        "annotations": {
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "description": "A tool without arguments.",
+          "properties": {},
+          "title": "Empty",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    },
+    {
+      "schema": {
+        "name": "clip_capture",
+        "description": "Pause or resume clipboard watching (write). Only when the user explicitly asks for it.\nSinónimos: pausa el portapapeles, deja de copiar, reanuda el portapapeles, vuelve a vigilar el portapapeles.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "properties": {
+            "action": {
+              "enum": [
+                "pause",
+                "resume"
+              ],
+              "title": "Action",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action"
+          ],
+          "title": "CaptureArgs",
+          "type": "object"
+        }
+      },
+      "module": "clipboard",
+      "token_file": "data/native/clipboard/data/mcp-token"
+    }
+  ]
+}

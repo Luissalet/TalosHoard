@@ -62,3 +62,10 @@ Install `pytest pytest-asyncio` in the same environment. Run `python -m pytest t
 UI sources live under `ui/`; each has its own lockfile. Run `npm ci` and `npm run build` inside the relevant UI directory. Built assets ship with the repository. `scripts/build_catalog.py` rebuilds the static native tool definitions without opening histories or starting engines.
 
 Text-model requests use the family's configured global Sparks service. Audio and visual engines retain their native optional model downloads and local GPU leases; no model loads while its module is OFF. `provenance/` records licenses and exact source commits. Cinzel and Source Sans 3 ship under their included SIL Open Font Licenses.
+
+
+## Owned data and compatibility
+
+Native module data can be relocated into `data/native/<module>/data`, with per-module configuration beside it. Writer fiction uses the owning desktop profile `writers-hoard/fiction/data`. Move complete data trees, including SQLite WAL/SHM, media, downloaded models and browser sessions; update saved absolute paths before enabling a module. The compatibility manifests in `compatibility/<id>/faustus-plugin.json` preserve native IDs, tool schemas and tokens without a retired checkout. Add each merged application's `compatibility` directory to Hub roots before the general repository root. Discovery and compatibility bridges never start an application. All modules remain OFF during relocation.
+
+Legacy in-place adoption scripts are optional import helpers; keeping the old repository is unnecessary once relocation and route updates have been verified.
