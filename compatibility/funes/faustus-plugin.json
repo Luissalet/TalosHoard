@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "id": "funes",
+  "name": "Funes's Hoard · Talos",
+  "purpose": "Absorbed by Talos's Hoard. Compatibility identity only; no standalone server. Gives the assistant a local memory of desktop activity and audio sessions. Records and transcribes meetings and voice notes, searches transcripts, and merges them with screen and clipboard memory in one citable timeline.",
+  "capabilities": [
+    "activity timeline",
+    "day summaries",
+    "resume context",
+    "recent files",
+    "git commits",
+    "activity search",
+    "audio recording",
+    "live and final transcription",
+    "meeting search and notes",
+    "audio import and export",
+    "meeting minutes with action items",
+    "import audio by file path",
+    "federated recall (screen, clipboard, audio)"
+  ],
+  "placeholders": [
+    "TALOS_DIR",
+    "APP_URL",
+    "TOKEN_FILE",
+    "PYTHON"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5220/legacy/funes",
+    "TALOS_DIR": "{COMPAT_DIR}/../..",
+    "DATA_DIR": "{TALOS_DIR}/data/native/activity/data",
+    "TOKEN_FILE": "{TALOS_DIR}/data/native/activity/data/mcp-token",
+    "PYTHON": "{TALOS_DIR}/.venv/Scripts/python.exe"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5220/legacy/funes",
+    "ui_url": "http://127.0.0.1:5220/",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "absorbed-funes"
+      }
+    },
+    "identify": {
+      "service": [
+        "funes-hoard"
+      ],
+      "title": [
+        "funes's hoard"
+      ]
+    }
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "{TALOS_DIR}/compatibility/mcp_server.py"
+    ],
+    "env": {
+      "HOARD_COMPAT_ID": "funes",
+      "HOARD_COMPAT_URL": "http://127.0.0.1:5220"
+    },
+    "optional_env": []
+  },
+  "x-family": {
+    "copilot": true,
+    "absorbed_by": {
+      "id": "talos",
+      "repository": "https://github.com/Luissalet/TalosHoard",
+      "module": "legacy/funes",
+      "standalone": false
+    },
+    "standalone": false,
+    "compatibility": true,
+    "source_data": "Moved into the merged application; no dependency on the retired repository."
+  },
+  "provides": {
+    "skills": [
+      "skills/where-was-i/SKILL.md"
+    ]
+  },
+  "notes": "Native compatibility identity owned by Talos's Hoard. Data, tokens and all runtime files belong to the merged application. No retired repository is required. Start the owner explicitly and enable its module."
+}

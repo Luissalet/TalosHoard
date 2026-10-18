@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "id": "cassandra",
+  "name": "Cassandra's Hoard · Talos",
+  "purpose": "Absorbed by Talos's Hoard. Compatibility identity only; no standalone server. Observability for the local AI stack: which local services (the workspace, llama-server, Ollama, ComfyUI, the launcher and every Hoard app) are up, what went down and when, what else changed at that moment, what the logs said, what the GPUs were doing, whether the user's public websites are up (HTTP, TLS certificate, DNS, domain expiry), and opt-in restarts.",
+  "capabilities": [
+    "service-status",
+    "health-checks",
+    "incidents",
+    "probable-cause",
+    "uptime-history",
+    "log-search",
+    "log-tailing",
+    "gpu-timeline",
+    "vram",
+    "restart-policies",
+    "restart",
+    "watch-list",
+    "reboot-detection",
+    "audit-trail",
+    "agent-calls",
+    "secrets-audit",
+    "event-bus",
+    "public-sites",
+    "site-uptime",
+    "tls-certificates",
+    "domain-expiry",
+    "faustus-attention",
+    "faustus-farm",
+    "running-agents",
+    "period-budget"
+  ],
+  "placeholders": [
+    "TALOS_DIR",
+    "APP_URL",
+    "TOKEN_FILE",
+    "PYTHON"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5220/services",
+    "TOKEN_FILE": "{TALOS_DIR}/data/native/services/data/mcp-token",
+    "PYTHON": "{TALOS_DIR}/.venv/Scripts/python.exe",
+    "TALOS_DIR": "{COMPAT_DIR}/../..",
+    "DATA_DIR": "{TALOS_DIR}/data/native/services/data"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5220/services",
+    "ui_url": "http://127.0.0.1:5220/",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "absorbed-cassandra"
+      }
+    },
+    "identify": {
+      "service": [
+        "cassandra-hoard"
+      ],
+      "title": [
+        "cassandra's hoard",
+        "vigía del stack local"
+      ]
+    }
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "{TALOS_DIR}/compatibility/mcp_server.py"
+    ],
+    "env": {
+      "HOARD_COMPAT_ID": "cassandra",
+      "HOARD_COMPAT_URL": "http://127.0.0.1:5220"
+    },
+    "optional_env": []
+  },
+  "x-family": {
+    "agenda": true,
+    "copilot": {
+      "provider": "faustus",
+      "contract": "1.0",
+      "panel": "/api/copilot/panel.js",
+      "context": [
+        "service",
+        "site",
+        "incident",
+        "gpu",
+        "filters",
+        "editor"
+      ]
+    },
+    "absorbed_by": {
+      "id": "talos",
+      "repository": "https://github.com/Luissalet/TalosHoard",
+      "module": "services",
+      "standalone": false
+    },
+    "standalone": false,
+    "compatibility": true,
+    "source_data": "Moved into the merged application; no dependency on the retired repository."
+  },
+  "notes": "Native compatibility identity owned by Talos's Hoard. Data, tokens and all runtime files belong to the merged application. No retired repository is required. Start the owner explicitly and enable its module."
+}

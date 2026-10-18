@@ -1,0 +1,100 @@
+{
+  "schema": 1,
+  "id": "diskhoard",
+  "name": "Disk Hoard · Talos",
+  "purpose": "Absorbed by Talos's Hoard. Compatibility identity only; no standalone server. Measures what fills the user's disks, knows which folders are regenerable junk (caches, node_modules, build output, temp files) and can clean them: to the Recycle Bin, permanently with explicit confirmation, or through a reviewable PowerShell script. It also splits a folder into ZIPs that each stay under a size limit (upload sites with a per-file cap), cutting a file bigger than the limit into raw .zip.001 volumes.",
+  "capabilities": [
+    "disk-usage",
+    "scan",
+    "hotspots",
+    "junk-catalog",
+    "stale-folders",
+    "largest-files",
+    "file-types",
+    "find-files",
+    "explain-folder",
+    "cleanup-script",
+    "delete-to-recycle-bin",
+    "delete-permanent",
+    "rescan",
+    "zip-split",
+    "split-archives",
+    "disk-treemap",
+    "keyboard-treemap-navigation",
+    "ollama-backups",
+    "ollama-free"
+  ],
+  "placeholders": [
+    "TALOS_DIR",
+    "APP_URL",
+    "TOKEN_FILE",
+    "PYTHON"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5220/disk",
+    "TOKEN_FILE": "{TALOS_DIR}/data/native/disk/data/mcp-token",
+    "TALOS_DIR": "{COMPAT_DIR}/../..",
+    "DATA_DIR": "{TALOS_DIR}/data/native/disk/data",
+    "PYTHON": "{TALOS_DIR}/.venv/Scripts/python.exe"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5220/disk",
+    "ui_url": "http://127.0.0.1:5220/",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "absorbed-diskhoard"
+      }
+    },
+    "identify": {
+      "service": [
+        "disk-hoard"
+      ],
+      "title": [
+        "diskhoard",
+        "disk hoard"
+      ]
+    }
+  },
+  "x-family": {
+    "copilot": {
+      "provider": "faustus",
+      "contract": "1.0",
+      "panel": "/api/copilot/panel.js",
+      "context": [
+        "scan",
+        "folder",
+        "file",
+        "selection",
+        "zip-draft",
+        "ollama-draft"
+      ],
+      "project_tools": {
+        "describe": "disk_status",
+        "resolve": "disk_dir"
+      }
+    },
+    "absorbed_by": {
+      "id": "talos",
+      "repository": "https://github.com/Luissalet/TalosHoard",
+      "module": "disk",
+      "standalone": false
+    },
+    "standalone": false,
+    "compatibility": true,
+    "source_data": "Moved into the merged application; no dependency on the retired repository."
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "{TALOS_DIR}/compatibility/mcp_server.py"
+    ],
+    "env": {
+      "HOARD_COMPAT_ID": "diskhoard",
+      "HOARD_COMPAT_URL": "http://127.0.0.1:5220"
+    },
+    "optional_env": []
+  },
+  "notes": "Native compatibility identity owned by Talos's Hoard. Data, tokens and all runtime files belong to the merged application. No retired repository is required. Start the owner explicitly and enable its module."
+}
