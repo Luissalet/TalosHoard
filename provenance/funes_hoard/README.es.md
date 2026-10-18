@@ -1,0 +1,377 @@
+<img src="app-icon.png" width="96" alt="">
+
+# Funes's Hoard
+
+### ¿Dónde me había quedado? ¿Qué hacía antes de comer? ¿Cuánto de esta semana se fue de verdad en Faustus?
+
+**La memoria episódica de tu ordenador: actividad del escritorio y audio grabado localmente, con transcripciones consultables y una línea de tiempo común.**
+
+[English](README.md) · [Inicio rápido](#inicio-rápido) · [Conectar con Faustus](#conectarlo-a-faustus) · [Referencia MCP](docs/MCP.md) · [Portfolio](https://luissalet.github.io/Portfolio/#projects)
+
+![Vista del día: la línea de tiempo de ayer ajustada a las horas activas con la ausencia rayada, un tramo fijado y la tarjeta ¿Dónde lo dejé? con los últimos contextos de trabajo](docs/media/today.png)
+*Aplicación real, tres días de datos de demostración sintéticos (`--demo`, sin títulos de ventana reales).*
+
+> **Antes que nada, qué hace esta aplicación con tu actividad.**
+>
+> - **Dónde se guarda:** en un único archivo SQLite, `data/funes.sqlite3`,
+>   en este ordenador. Sin cuentas, sin telemetría y sin copia en la nube.
+> - **Qué graba:** la aplicación en primer plano, el título de su ventana,
+>   el tiempo inactivo y bloqueado, los archivos abiertos que pasan por
+>   "Elementos recientes" de Windows y los commits de las carpetas git que
+>   añadas.
+> - **Qué no graba nunca:** pulsaciones de teclado, el contenido de la
+>   pantalla, capturas ni el portapapeles. Los gestores de contraseñas y las
+>   ventanas privadas o de incógnito se excluyen por defecto, y tus propias
+>   reglas pueden descartar u ocultar cualquier aplicación o ventana *antes*
+>   de que se guarde la muestra.
+> - **Pausa:** 15 min, 1 h o hasta que la reanudes, desde cualquier
+>   pantalla. El asistente también puede pausar, pero nunca reanudar ni
+>   acortar tu pausa.
+> - **Borrado:** cualquier rango de tiempo, de forma permanente, desde
+>   **Privacidad** (con atajos de "últimos 15 min / 30 min / última hora /
+>   hoy"), además de una purga automática a los 180 días por defecto.
+> - **Qué sale de la aplicación:** solo "Escribe mi día", si lo usas, envía
+>   un resumen compacto del día (categorías, aplicaciones, proyectos,
+>   duraciones; nunca títulos de ventana) al modelo de lenguaje que Hoard
+>   Link encuentre en este equipo o a la dirección que pongas en Ajustes. Se
+>   puede desactivar.
+>
+> El detalle completo está en [Privacidad y seguridad](#privacidad-y-seguridad).
+
+## Por qué
+
+Un asistente local no sabe qué había en la pantalla de su usuario. Si le
+preguntas "¿dónde me había quedado?", "¿qué tal ha ido el día?" o "¿cuál
+era esa página de DuckDB que tenía abierta ayer?", un modelo de lenguaje
+solo puede inventarse la respuesta o pedirte que la reconstruyas tú.
+Funes's Hoard guarda justo lo que el modelo no puede ver: la secuencia de
+ventanas que tenías delante, con el tiempo inactivo y bloqueado, los
+archivos que abriste y los commits que hiciste. Lo convierte en tramos,
+resúmenes del día, bloques de concentración y respuestas para retomar el
+contexto, y le da al asistente herramientas específicas para consultarlo.
+
+## Qué está implementado
+
+| Área | Disponible ahora | Límite |
+| --- | --- | --- |
+| Captura | Aplicación en primer plano, título de ventana, inactividad y bloqueo, muestreados cada segundo en Windows (`ctypes` + `psutil`); agrupados en tramos activo/ausente/bloqueado; la ausencia empieza cuando dejaste de usar teclado y ratón, no cuando se detecta, salvo en una reunión o un vídeo (también en una pestaña del navegador), que tienen un umbral aparte y más largo (60 min por defecto) antes de que solo lo que pase de él cuente como ausencia; las suspensiones y los momentos excluidos o en pausa cierran el tramo en lugar de estirarlo; el tramo abierto se guarda cada 30 s y, si la aplicación se cae, se cierra al volver a arrancar | La sonda de Linux (`xdotool`/`xprintidle`) es solo para desarrollo; las llamadas Win32 se prueban con simulaciones (ver [límites conocidos](#hoja-de-ruta-y-límites-conocidos)) |
+| Privacidad | Las reglas de exclusión descartan la muestra antes de guardarla (gestores de contraseñas, ventanas privadas o de incógnito, en inglés y español); las de ocultación guardan la aplicación y sustituyen el título; las reglas no válidas se rechazan en lugar de ignorarse en silencio; pausa de 15 min, 1 h o hasta reanudar, que se reanuda sola; purga por antigüedad; borrado de un rango (incluidos los tramos que lo solapan y sus entradas de búsqueda), con atajos de últimos 15 min / 30 min / última hora / hoy; exportación de los tramos a CSV o de todo a JSON, opcionalmente para un rango de días | Las reglas se aplican desde que se añaden, no a los títulos ya guardados |
+| Clasificación | Reglas ordenadas por aplicación, expresión regular del título o dominio en el título, con valores por defecto para las aplicaciones habituales de Windows; detección del proyecto en títulos de VS Code (carpetas con guiones, remotas e Insiders), JetBrains y Visual Studio, y por los nombres de los repositorios git encontrados; vista previa ("reclasificaría N tramos"); reaplicación al historial en segundo plano, con progreso | No se lee la barra de direcciones del navegador; una regla de "dominio" busca el texto en el título |
+| Conocimiento derivado | Totales por día, semana o rango, por categoría, aplicación y proyecto, recortados en los bordes del periodo; primera y última actividad; cambios de contexto (>= 10 s); bloques de concentración (>= 25 min, cada interrupción <= 2 min); "dónde estaba" con contextos distintos (primero el trabajo; sin música, chats ni juegos salvo que se pida), sus últimos títulos, archivos (primero los del propio proyecto) y commits | La concentración se mide por tiempo en ventana; no dice nada de la atención real |
+| Otras fuentes | Archivos recientes mediante un lector de accesos directos (`.lnk`) escrito a partir de la especificación (rutas Unicode, sufijos de ruta, archivos truncados rechazados); commits de git en las carpetas configuradas, filtrados por los autores indicados o, por defecto, por la identidad git de cada repositorio | No se ven los archivos que no pasan por "Elementos recientes" de Windows |
+| Búsqueda | SQLite FTS5 sobre títulos, rutas de archivo y asuntos de commits, sin distinguir tildes, por prefijo de palabra y a prueba de cualquier entrada; si no aparece nada con todas las palabras, prueba con cualquiera; un resultado de ventana dice cuánto tiempo estuvo abierta y, en la interfaz, abre su día en ese momento | Si el sqlite3 de la plataforma no trae FTS5, se usa una búsqueda `LIKE` (se comprueba al arrancar) |
+| API del agente | Doce herramientas de actividad (más dos de audio para otras apps, ver abajo), de solo lectura salvo una pausa que solo puede alargarse; horas ISO locales y textos legibles en cada resultado; límites pequeños con `has_more`/`next_offset`; los ids y las horas se encadenan de una llamada a la siguiente (`activity_timeline(around=<ts de un resultado>)`); retomar un proyecto concreto alcanza hasta 180 días; todas las llamadas quedan registradas, también las rechazadas | Por diseño, el agente no puede reanudar, cambiar reglas, borrar ni exportar |
+| Memoria de audio | Graba micrófono y audio del sistema, transcribe localmente, importa archivos, busca sesiones, edita notas/etiquetas y exporta TXT/SRT/Markdown. La interfaz **Audio y transcripción** también se puede instalar como PWA | La grabación necesita un dispositivo de audio; la importación funciona sin él |
+| Actas de reuniones | Un *acta* de una sesión de reunión o entrevista: resumen, decisiones, preguntas abiertas, participantes y **tareas** (quién, qué, para quién, para cuándo), cada una con su evidencia (el momento, quién hablaba y una cita que está literalmente en la transcripción; el momento y el hablante salen de la transcripción, nunca del modelo). Las reuniones largas se leen por tramos y se unen. Los plazos como «el martes» o «en dos semanas» se calculan a partir de la fecha de la propia reunión con reglas simples, no con el modelo; si no nombran un día concreto se quedan como palabras. Se escribe sola al terminar de transcribir una reunión o entrevista (ajuste *Escribir actas automáticamente*, activado por defecto) o a petición: **Generar / Regenerar** en la sesión, marcas de tiempo que llevan al audio, **Copiar como Markdown**, y el acta entra en la exportación a Markdown. Avisa con el evento `funes.minutes.ready {minutes_id, title, date, attendees}` en el bus de Hoard Link (el id del acta es el de la sesión; las claves anteriores `session_id`, `action_items` y `started_at` se mantienen), y `minutes_get` entrega el acta a otras aplicaciones en un formato compacto | Necesita un modelo de lenguaje por Hoard Link; sin él la respuesta es `no_model` y no se inventa nada. El acta se reemplaza al volver a transcribir una sesión |
+| Importar por ruta | `scribe_import_file(path, wait_s)` importa un archivo local de audio o vídeo por su ruta sin mover ni borrar el original, y con `wait_s` devuelve la transcripción (con tope y una pista para continuar) | La ruta debe ser absoluta y de este equipo; la aplicación nunca lee fuera del archivo que nombras |
+| Recall | `recall`/`recall_search` combinan los episodios del escritorio, el audio de Funes, la pantalla de Argus y el portapapeles de Echo en una línea de tiempo citable; se conserva el identificador `[scribe:seg …]` para el audio ([docs/RECALL.md](docs/RECALL.md)) | Argus y Echo necesitan sus apps; el audio funciona dentro de Funes |
+| Contradicciones | recall/recall_search descartan los recuerdos que contradicen a otro mejor respaldado o más reciente (hora/valor distinto, negación, estado opuesto) y devuelven `contradictions: [{kept, dropped, reason}]`; `include_dropped` los conserva marcados y la vista Recall muestra un aviso ([docs/RECALL.md](docs/RECALL.md)) | Solo reglas deterministas, sin modelo; funciona con frases que pueda analizar, es/en |
+| Modelos compartidos | "Escribe mi día": una narración breve del día en segunda persona ("You spent the morning on..."; el modelo recibe las instrucciones en inglés y suele responder en inglés), guardada y regenerable, a partir de los mismos datos compactos que devuelve `activity_summary` (nunca títulos reales u ocultados); en Ajustes se ve el modelo resuelto, el proveedor y, si no hay ninguno, el motivo en una frase, con un botón para volver a comprobar y ajustes manuales | Solo en la interfaz, no es una herramienta MCP; necesita un modelo de lenguaje accesible por Hoard Link (Faustus, o un servidor Ollama, llama.cpp u otro compatible con OpenAI que ya esté en marcha); un día sin nada registrado se rechaza sin llamar al modelo |
+| Interfaz | Hoy (línea de tiempo con zoom en la que se ven la ausencia y el bloqueo, leyenda, detalle fijado, tramos accesibles con el teclado, "¿Dónde lo dejé?" y "Escribe mi día"), Semana (navegable), Buscar (filtro de fechas), Proyectos (selector de periodo), Archivos y commits, Reglas, Privacidad, Ajustes (Modelos), Actividad del asistente; cada día y cada momento tienen su propia dirección (recargar y Atrás funcionan); español e inglés; tema claro y oscuro | Pensada para escritorio, no para móvil |
+
+Más pantallas: [Buscar](docs/media/search.png) · [Privacidad](docs/media/privacy.png) ·
+[Ajustes](docs/media/settings.png) ·
+[Actividad del asistente](docs/media/assistant-activity.png) (llamadas reales hechas
+a través de la API del agente por `scripts/screenshots.py`, incluida una rechazada).
+
+## Casos de uso
+
+Ocho escenarios concretos de un desarrollador ficticio, recorridos de
+principio a fin como persona en el navegador y como modelo local por MCP
+([docs/USE_CASES.md](docs/USE_CASES.md); hallazgos y arreglos en
+[docs/USABILITY_REPORT.md](docs/USABILITY_REPORT.md)):
+
+- **Lunes por la mañana, "¿dónde lo dejé?"**: la pantalla Hoy abre con los
+  tres últimos contextos de trabajo (proyecto, últimos títulos, archivos,
+  commits), así que el último archivo del viernes se ve antes de elegir un
+  día; un clic fija ese momento en la línea de tiempo de su día.
+- **"Faustus, ¿qué estaba haciendo a las 16:00?"**: una sola llamada a
+  `recall` combina el historial de ventanas de Funes con lo que había en
+  pantalla (Argus), lo que se copió (Echo) y lo que se dijo en una llamada
+  (audio de Funes) alrededor de ese momento, cada resultado con una cita breve para
+  responder citándola; si una fuente no está en marcha, aparece como no
+  disponible y el resto de la respuesta llega igual.
+- **"Faustus, ¿dónde lo dejé ayer?"**: una sola llamada a
+  `activity_where_was_i`, unos 500 tokens, responde con el proyecto, la
+  ventana y el título del editor que nombra el archivo, sin contar la música
+  ni el chat.
+- **Una nota semanal para una búsqueda de empleo**: `activity_summary` da
+  las horas por proyecto como textos listos para leer, y una búsqueda de
+  los portales de empleo o del título de una novela dice cuánto tiempo
+  estuvieron abiertas esas ventanas; Faustus escribe la nota con su propia
+  herramienta de notas.
+- **"Esa página de FTS5 del martes"**: buscas, haces clic en el resultado y
+  llegas a ese día con el tramo fijado (la dirección lo conserva, así que
+  recargar y Atrás funcionan); un agente pasa el `ts` del resultado a
+  `activity_timeline(around=...)`.
+- **Privacidad antes de una entrevista o del banco**: pausa de una hora,
+  las ventanas privadas (también "incógnito" en español) y las páginas del
+  banco nunca se pueden buscar, y "Últimos 30 min" rellena el borrado de un
+  rango para la media hora que se te olvidó.
+- **Horas por proyecto para un gráfico**: exporta los tramos a CSV (fechas y
+  horas locales, minutos, categoría, proyecto) para una hoja de cálculo o
+  una herramienta de análisis de datos.
+
+## Inicio rápido
+
+```powershell
+git clone https://github.com/Luissalet/FunesHoard.git
+cd FunesHoard
+```
+
+### Windows
+
+Haz doble clic en **`Iniciar Funes's Hoard.cmd`**. Ejecuta
+`scripts\start.ps1`, que la primera vez crea `.venv` (Python 3.11 o
+posterior, con preferencia por `C:\Python313`), instala
+`requirements-lock.txt` y compila la interfaz si falta `frontend\dist`
+(Node 22); las siguientes veces solo reinstala si ha cambiado el lock.
+Después arranca la aplicación oculta, con la raíz del repositorio como
+carpeta de trabajo, espera a que responda `/api/health` y abre
+`http://127.0.0.1:8813`. Si ya estaba en marcha, simplemente la abre.
+**`Detener Funes's Hoard.cmd`** la para. Lo mismo desde PowerShell:
+`scripts\start.ps1 [-Port 8813] [-Demo] [-NoBrowser]` y
+`scripts\stop.ps1`.
+
+Pasos manuales:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\pip install -r requirements-lock.txt
+cd frontend; npm ci; npm run build; cd ..
+cd audio_ui; npm ci; npm run build; cd ..
+.venv\Scripts\python -m funes_hoard
+```
+
+### Linux / macOS
+
+La grabación está pensada para Windows: en Linux la sonda es aproximada
+(X11 con `xdotool` y `xprintidle`) y en macOS no hay sonda. La interfaz, la
+API y las herramientas MCP funcionan con datos sintéticos usando `--demo`.
+Hace falta Python 3.11 o posterior y Node 22:
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-lock.txt
+(cd frontend && npm ci && npm run build)
+(cd audio_ui && npm ci && npm run build)
+.venv/bin/python -m funes_hoard --demo
+```
+
+La aplicación responde en `http://127.0.0.1:8813`
+(`curl http://127.0.0.1:8813/api/health`).
+
+Opciones: `--demo` (datos sintéticos en `data-demo/`, no se graba nada del
+escritorio), `--data-dir` (o `FUNES_DATA_DIR`), `--port`, `--no-browser`.
+Tus datos se guardan en `data/`. La aplicación solo escucha en la interfaz
+local; `--host` no acepta otra cosa.
+
+## Conectarlo a Faustus
+
+Funes's Hoard es un plugin de [Faustus](https://github.com/Luissalet/Faustus)
+y se declara con [`faustus-plugin.json`](faustus-plugin.json) en la raíz del
+repositorio. Arranca la aplicación y, en Faustus, abre **Connectors ->
+Nearby apps -> Add**: Faustus la encuentra en el puerto 8813, comprueba que
+`/api/health` responde como `funes-hoard`, arranca el adaptador MCP y carga
+la skill [`where-was-i`](skills/where-was-i/SKILL.md), que le explica a un
+modelo local qué herramienta usar y en qué trampas no caer. El adaptador es
+un script stdio que se lanza por su ruta, con la URL de la aplicación en
+`FUNES_URL`:
+
+```powershell
+$env:FUNES_URL = "http://127.0.0.1:8813"
+.venv\Scripts\python.exe funes_hoard\mcp_server.py
+```
+
+### Herramientas MCP
+
+| Herramienta | Qué hace | ¿Solo lectura? |
+| --- | --- | --- |
+| `activity_now` | Aplicación, título y proyecto actuales, segundos de inactividad, si graba o está en pausa (y hasta cuándo) | sí |
+| `activity_where_was_i` | Retomar el contexto: los últimos contextos distintos antes de un momento, con título, archivos y commits | sí |
+| `activity_project_resume` | Retomar un proyecto concreto con ventanas, archivos abiertos y commits, hasta 180 días atrás | sí |
+| `activity_timeline` | Tramos de un día o rango, paginados con `offset` | sí |
+| `activity_summary` | Totales por categoría, aplicación o proyecto, bloques de concentración y cambios de contexto | sí |
+| `activity_search` | Cuándo apareció un título, archivo o commit con ciertas palabras | sí |
+| `activity_recent_files` | Archivos abiertos hace poco | sí |
+| `activity_projects` | Tiempo por proyecto, última vez y commits | sí |
+| `activity_pause` | Pausar la grabación; nunca acorta una pausa ya puesta | **no** (la única escritura) |
+| `recall` | "Qué estaba haciendo a las X" combinado entre la actividad y el audio de Funes, Argus y Echo, con una cita breve por resultado | sí |
+| `recall_search` | La misma combinación, pero busca texto en un rango en vez de un momento; ambas aceptan `include_dropped` y devuelven `contradictions` | sí |
+| `sources_status` | Estado de cada fuente combinada (en marcha, accesible, token aceptado) | sí |
+| `scribe_minutes` | Acta de una sesión grabada (resumen, decisiones, tareas con evidencia); se escribe con el modelo local si hace falta, `no_model` si no hay ninguno; `regenerate` la reescribe | no (guarda el acta) |
+| `minutes_get` | El mismo acta en el formato compacto que piden otras aplicaciones: `{title, date, attendees, action_items: [{text, owner, due}], summary}`; `minutes_id` es el id de la sesión de `funes.minutes.ready`; con `generate=false` solo lee lo guardado | no (guarda el acta salvo con `generate=false`) |
+| `scribe_import_file` | Importar un archivo local de audio o vídeo por su ruta; con `wait_s` devuelve la transcripción para poder usarla al momento | no |
+
+Las herramientas de sesiones de audio (`scribe_status`, `scribe_sessions`, `scribe_transcript`, `scribe_search`, `scribe_start`, `scribe_stop`, `scribe_note`, `scribe_tag`, `scribe_export`, `scribe_delete`) las sirve el mismo adaptador MCP. Las demás aplicaciones llegan a Funes por el hub de Hoard Link, que ve exactamente las doce herramientas de actividad más `scribe_minutes`, `minutes_get` y `scribe_import_file`: iniciar, parar y borrar grabaciones quedan fuera del alcance de otras aplicaciones.
+
+Funciona con cualquier cliente MCP por stdio; en [docs/MCP.md](docs/MCP.md)
+están la salida de cada herramienta, los códigos de error y un ejemplo de
+configuración, y en [docs/RECALL.md](docs/RECALL.md) se explican las
+herramientas `recall` combinadas y el formato de cita al completo.
+
+La descripción de cada herramienta ocupa menos de 750 caracteres (unos 250
+tokens), así que ofrecerlas todas cuesta poco al anfitrión; el detalle de cada
+argumento está en la descripción de su parámetro y `tests/test_tool_descriptions.py`
+lo vigila.
+
+## Asistente de Faustus
+
+Con el lanzador compartido de Hoard Link instalado, la app muestra el panel de Faustus de la familia (un botón flotante) tanto en la interfaz de actividad como en las páginas de audio. La conversación, el modelo y las herramientas viven en Faustus; esta app solo le dice al panel qué hay abierto.
+
+- **Contexto por vista.** De la app solo salen ids, títulos y vistas previas cortas: ni historial de títulos de ventana, ni tokens, ni documentos enteros. En la interfaz de actividad el panel recibe la página (`today`, `timeline`, `week`, `search`, `projects`, `files`, `rules`, `privacy`, `assistant`, `settings`), el `day` abierto y el `span` fijado (tipo, desde, hasta, minutos, categoría). En las páginas de audio recibe el `audio_session` abierto (título, hasta 10 etiquetas), sus `minutes` y la sesión que se está grabando (estado `recording`, segundos transcurridos). Las vistas de creación no dan objeto.
+- **Campos sin guardar.** El panel los pide con el evento de ventana `funes:context-request`. Formularios de actividad: `search-form`, `sources-form`, `commit-sources-form`, `recall-form`, `classify-rule-form`, `privacy-rule-form`, `privacy-retention-form`, `privacy-delete-range-form`, `settings-form`. Formularios de audio: `search-form`, `recording-form`, `session-form`, `sessions-filter-form`.
+- **Refresco.** Cuando el asistente termina un turno, la vista abierta se recarga en el sitio (`hoard:copilot-turn-end` / `window.hoardCopilot.onTurnEnd`); los formularios que estás editando conservan lo escrito.
+- **Guardado.** Los formularios envían solo los campos que han cambiado. `PATCH /api/sessions/{id}` toca solo los campos enviados y tiene los nuevos `add_tags` y `remove_tags`; el nuevo `change_tags` lee y escribe bajo un mismo bloqueo y la herramienta `tag` lo usa, así que una etiqueta añadida en otro sitio nunca se sobrescribe. `PUT /api/backend/config` fusiona por clave, una cadena vacía quita un único ajuste y el token solo se envía cuando se ha escrito.
+- **Pruebas.** `node --test frontend/copilot-context.test.mjs`, `node --test audio_ui/copilot-context.test.mjs` y `python -m pytest tests/test_partial_updates.py`.
+
+## Modelos compartidos (HoardLink)
+
+Las funciones que necesitan un modelo de lenguaje, "Escribe mi día" y las actas,
+nunca cargan uno propio: usa [HoardLink](https://github.com/Luissalet/HoardLink)
+(incluido en [`funes_hoard/hoard_link/`](funes_hoard/hoard_link/)), el
+mismo resolutor que comparten todas las aplicaciones del ecosistema
+Faustus, en este orden -- el ajuste manual de Ajustes, después el
+registro de modelos de la propia Faustus y, por último, un servidor
+llama.cpp, Ollama u otro compatible con OpenAI que ya esté en marcha en
+este equipo. El resto de la aplicación funciona por completo sin ningún
+modelo, y Ajustes explica exactamente por qué cuando no hay ninguno
+disponible.
+
+## Arquitectura
+
+```mermaid
+flowchart LR
+  Probe["sonda de Windows, 1 muestra/s"] --> Privacy["reglas de privacidad: descartar u ocultar"]
+  Privacy --> Spans["tramos + clasificación"]
+  Spans --> DB[("SQLite en modo WAL")]
+  Pollers["archivos recientes, git log, purga"] --> DB
+  UI["interfaz React"] -->|"/api/*"| API["FastAPI en 127.0.0.1:8813"]
+  Model["Faustus o cualquier cliente MCP"] -->|stdio| MCP["mcp_server.py"]
+  MCP -->|"/api/agent/*"| API
+  API --> DB
+  API -->|"Escribe mi día"| Link["HoardLink: modelo de lenguaje compartido"]
+```
+
+FastAPI, un hilo que muestrea una vez por segundo, otro hilo para
+archivos recientes, git y purga, y SQLite en modo WAL. La lógica de
+tramos, privacidad, clasificación y resúmenes es Python puro, sin FastAPI
+ni sqlite. El adaptador MCP es un script aparte que solo habla HTTP con la
+aplicación. Detalles en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Privacidad y seguridad
+
+- Todo se queda en `data/funes.sqlite3`, en este ordenador. Sin telemetría
+  y sin uso de red; `git log` se ejecuta en local. La única excepción es
+  "Escribe mi día", descrito más arriba: solo envía al modelo de lenguaje
+  los datos compactos de `activity_summary` (categorías, aplicaciones,
+  proyectos, duraciones, bloques de concentración) -- nunca títulos de
+  ventana reales u ocultados -- y se puede desactivar en Ajustes; borrar el
+  historial de un día también borra su narración guardada.
+- Las reglas de exclusión actúan antes de escribir la muestra; una prueba
+  comprueba que la fila no llega a existir. Los títulos ocultados nunca
+  entran en el índice de búsqueda.
+- El servidor solo escucha en la interfaz local. Un middleware rechaza el
+  DNS rebinding (una cabecera `Host` que no sea un nombre local con el
+  puerto de esta aplicación) y las escrituras desde otros sitios (un
+  `Origin` ajeno o `Sec-Fetch-Site: cross-site`); no hay CORS.
+- El asistente solo ve lo que devuelven sus herramientas y solo puede
+  hacer una cosa: pausar (o alargar una pausa). Cada llamada, también las
+  rechazadas, se guarda en la tabla de auditoría `agent_calls`
+  (herramienta, resumen de argumentos, duración, correcta o con error) y
+  aparece en "Actividad del asistente".
+- Los resultados están acotados (de 5 a 20 elementos por defecto, 100 como
+  máximo) y los títulos largos se recortan, porque quien los lee es un
+  modelo local con un contexto limitado; las instrucciones del servidor le
+  piden al modelo que trate los títulos de ventana como datos, nunca como
+  instrucciones.
+- La purga y el borrado de rangos también eliminan `file_events` y
+  `commits` del mismo periodo, no solo los tramos: borrar el historial
+  significa borrarlo entero.
+
+## Desarrollo
+
+```bash
+.venv/bin/python -m pytest tests/ -q    # 300+ pasan, sin red, en 15-30 s
+cd frontend && npm ci && npm run build  # 0 errores de TypeScript
+```
+
+En Windows, `.venv\Scripts\python -m pytest tests/ -q`. La integración
+continua ejecuta esas mismas dos tareas en Ubuntu con Python 3.12 y
+Node 22.
+
+Las pruebas cubren la agrupación en tramos, el inicio de la ausencia y del
+bloqueo, las suspensiones, los intervalos excluidos o en pausa, el guardado
+periódico y los tramos que quedan abiertos tras una caída; las reglas de
+privacidad (comprobando que la fila excluida no llega a existir) y su
+validación; la expiración de la pausa y la pausa del agente, que solo
+alarga; la purga y el borrado de rangos, incluido el índice de búsqueda y
+el resumen guardado de "Escribe mi día"; el lector de `.lnk` con ficheros
+construidos en las propias pruebas (ANSI, Unicode, sufijo, truncado); la
+detección de proyecto en títulos de editores; los bloques de
+concentración, los cambios de contexto, el recorte por periodo y "dónde
+estaba" con días simulados; las palabras de fecha en ambos idiomas y qué
+extremo del periodo representan; la búsqueda con FTS5 y con `LIKE` ante
+entradas hostiles; el filtro contra ataques desde el navegador (puertos de
+Host y Origin, origen `null`), la corrección del acceso a archivos fuera de
+la interfaz y la lista exacta de rutas del agente; el modelo compartido (la
+persistencia y combinación de `backend.json`, que el token nunca se
+devuelve, los estados resuelto/no disponible en Ajustes, el intercambio al
+volver a comprobar, y "Escribe mi día" -- guardado, regeneración,
+desactivación y el rechazo de días vacíos y respuestas vacías -- contra un
+`Link` simulado, más una pasada por el resolutor real con un transporte
+HTTP simulado, nunca una llamada de red real); la lógica de la sonda de
+Windows con las llamadas Win32 simuladas (desbordamiento del contador,
+ejecutables sin permiso); el escaneo de git con asuntos UTF-8, filtros de
+autor, sin ventanas de consola y en zonas horarias por delante de UTC; la
+línea de comandos; el manifiesto; y una prueba de protocolo MCP que lanza
+`mcp_server.py` por stdio contra la aplicación en marcha y comprueba las
+palabras clave, las anotaciones, los errores y el registro de llamadas.
+
+`scripts/uxtest_data.py`, `scripts/ui_walkthrough.py` y
+`scripts/agent_walkthrough.py` regeneran el conjunto de datos realista y
+repiten los casos de uso en el navegador y por MCP;
+`scripts/screenshots.py` vuelve a hacer las imágenes de `docs/media/`.
+
+## Hoja de ruta y límites conocidos
+
+- **Lo específico de Windows se prueba con simulaciones.** Las pruebas y la
+  integración continua se ejecutan en Linux; el destino es Windows con
+  Python 3.13. Las llamadas Win32 de `WindowsProbe` (`GetForegroundWindow`,
+  `GetLastInputInfo`, `OpenInputDesktop`) tienen sus firmas declaradas y la
+  lógica que las rodea se prueba con las llamadas simuladas. El bloqueo se
+  detecta porque `OpenInputDesktop` falla en el escritorio seguro, así que
+  un aviso de UAC también cuenta como "bloqueado".
+- **FTS5 en el sqlite3 de Python 3.13 de python.org** debería estar, pero se
+  comprueba al arrancar; si falta, la búsqueda usa `LIKE`.
+- **Los lanzadores de PowerShell** se han ejecutado con PowerShell 7 en
+  Linux (sin `-WindowStyle Hidden`, que solo existe en Windows); las
+  llamadas a `Get-CimInstance` y `Get-NetTCPConnection` de `stop.ps1` no se
+  han probado.
+- **No hay lector de la barra de direcciones del navegador:** una regla
+  sobre el título decide si algo es streaming o navegación, así que un
+  vídeo en un sitio que la regla no conoce sigue siendo navegación, con el
+  umbral de inactividad normal.
+- **Las actas valen lo que valgan la transcripción y el modelo.** Las citas se comprueban contra la transcripción y una tarea sin cita verificable se descarta, así que un modelo pequeño da actas más cortas, no inventadas. Los responsables son «yo» (quien grabó), un nombre que aparece en la transcripción o ninguno. Se leen de las palabras de la cita (una promesa en primera persona en una sola pista es del usuario; «Marta me tiene que devolver…» es de Marta), nunca se copian de una etiqueta de hablante como `otros` o `S1`.
+- "¿Dónde lo dejé?" mira tres días atrás; tras una ausencia más larga dice
+  que no hay nada que retomar.
+- El panel de Modelos muestra el motivo técnico del backend en inglés en
+  los dos idiomas, y "Escribe mi día" suele responder en inglés.
+
+En [docs/USABILITY_REPORT.md](docs/USABILITY_REPORT.md) está cómo se
+encontró cada punto.
+
+## Licencia
+
+MIT; consulta [LICENSE](LICENSE).
+
+El diario también muestra una pista **Agentes**, accesible por MCP con
+`activity_agents_day`: commits locales, tareas actualmente cerradas del Ágora
+y recibos explícitos de turnos de Faustus, con procedencia y cobertura. Aparece
+aunque no haya actividad de pantalla y no deduce horas de trabajo. Faustus ya
+incluye el emisor de recibos de respuestas guardadas; solo aparecen los enviados
+realmente al Hub, sin reconstruir turnos anteriores. Véanse los [límites de las fuentes](docs/AGENT-DIARY.md).
+
+Con `--demo` no se consultan los archivos recientes de Windows; la lista
+conserva sus ejemplos sintéticos. Usa una carpeta de datos aparte para no
+mezclar actividad ya guardada con la demostración. Véase [el modo demo](docs/DEMO.md).

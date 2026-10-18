@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "id": "talos",
+  "name": "Talos's Hoard",
+  "purpose": "Native consolidated Hoard modules in one process; each module defaults OFF.",
+  "capabilities": [
+    "screen-history",
+    "screenshot-import",
+    "screenshot-folder-watch",
+    "imported-screenshots",
+    "ocr",
+    "timeline",
+    "full-text-search",
+    "visual-search",
+    "similar-frames",
+    "activity-by-app",
+    "recent-screen",
+    "pause",
+    "private-mode",
+    "exclusions",
+    "retention",
+    "delete-range",
+    "clipboard-history",
+    "search",
+    "pin",
+    "sensitive-detection",
+    "images",
+    "activity timeline",
+    "day summaries",
+    "resume context",
+    "recent files",
+    "git commits",
+    "activity search",
+    "audio recording",
+    "live and final transcription",
+    "meeting search and notes",
+    "audio import and export",
+    "meeting minutes with action items",
+    "import audio by file path",
+    "federated recall (screen, clipboard, audio)",
+    "service-status",
+    "health-checks",
+    "incidents",
+    "probable-cause",
+    "uptime-history",
+    "log-search",
+    "log-tailing",
+    "gpu-timeline",
+    "vram",
+    "restart-policies",
+    "restart",
+    "watch-list",
+    "reboot-detection",
+    "audit-trail",
+    "agent-calls",
+    "secrets-audit",
+    "event-bus",
+    "public-sites",
+    "site-uptime",
+    "tls-certificates",
+    "domain-expiry",
+    "faustus-attention",
+    "faustus-farm",
+    "running-agents",
+    "period-budget",
+    "disk-usage",
+    "scan",
+    "hotspots",
+    "junk-catalog",
+    "stale-folders",
+    "largest-files",
+    "file-types",
+    "find-files",
+    "explain-folder",
+    "cleanup-script",
+    "delete-to-recycle-bin",
+    "delete-permanent",
+    "rescan",
+    "zip-split",
+    "split-archives",
+    "disk-treemap",
+    "keyboard-treemap-navigation",
+    "ollama-backups",
+    "ollama-free",
+    "independent-module-switches",
+    "default-off",
+    "native-module-lifecycle"
+  ],
+  "placeholders": [
+    "TALOS_DIR",
+    "APP_URL",
+    "TOKEN_FILE",
+    "PYTHON"
+  ],
+  "defaults": {
+    "APP_URL": "http://127.0.0.1:5220",
+    "TOKEN_FILE": "{TALOS_DIR}/data/mcp-token",
+    "PYTHON": "{TALOS_DIR}/.venv/Scripts/python.exe"
+  },
+  "app": {
+    "url_default": "http://127.0.0.1:5220",
+    "ui_url": "{APP_URL}",
+    "health": {
+      "path": "/api/health",
+      "expect": {
+        "service": "talos-hoard"
+      }
+    },
+    "identify": {
+      "service": [
+        "talos-hoard"
+      ],
+      "title": [
+        "talos's hoard"
+      ]
+    },
+    "launch_hint": {
+      "kind": "process",
+      "executable": "{PYTHON}",
+      "argv": [
+        "-m",
+        "talos_hoard",
+        "--no-browser"
+      ],
+      "cwd": "{TALOS_DIR}",
+      "readiness": {
+        "url": "{APP_URL}/api/health",
+        "timeout_s": 30
+      }
+    }
+  },
+  "mcp": {
+    "transport": "stdio",
+    "command": "{PYTHON}",
+    "args": [
+      "{TALOS_DIR}/mcp_server.py"
+    ],
+    "env": {
+      "TALOS_URL": "{APP_URL}",
+      "TALOS_TOKEN_FILE": "{TOKEN_FILE}"
+    },
+    "optional_env": [
+      "TALOS_DATA_DIR"
+    ]
+  },
+  "notes": "Start explicitly from Hoard Hub. Catalogue discovery never starts the server or engines. All modules default OFF; choices persist after explicit activation. Histories are mapped in place, never copied.",
+  "x-family": {
+    "copilot": {
+      "provider": "faustus",
+      "contract": "1.0",
+      "panel": "/api/copilot/panel.js"
+    },
+    "absorbs": [
+      "argus",
+      "echo",
+      "funes_hoard",
+      "cassandra_hoard",
+      "diskhoard"
+    ]
+  }
+}

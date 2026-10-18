@@ -1,0 +1,32 @@
+[
+  {
+    "source": "Argus's Hoard",
+    "commit": "2211fc9efeabd164d0fe3a89cace46c9da8fb9a7",
+    "package": "argus",
+    "files": 163
+  },
+  {
+    "source": "Echo's Hoard",
+    "commit": "18e56d5c2b35bbf5f8fc1345dadd1cc8e9254d1e",
+    "package": "echo",
+    "files": 142
+  },
+  {
+    "source": "Funes's Hoard",
+    "commit": "8980fb147433c58877a0429a88b1a97761eb4c0b",
+    "package": "funes_hoard",
+    "files": 238
+  },
+  {
+    "source": "Cassandra's Hoard",
+    "commit": "6cecb09bcb81bc84f0bac2c63950d517f673a7ac",
+    "package": "cassandra_hoard",
+    "files": 156
+  },
+  {
+    "source": "Disk Hoard",
+    "commit": "c453e07a97f4c13ef1683d5517fdd0c5c1e4f257",
+    "package": "diskhoard",
+    "files": 111
+  }
+]
