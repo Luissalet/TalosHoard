@@ -20,7 +20,7 @@ def create_app(data_dir, port):
     engine.ST.port = port
     engine.TOKEN = engine.load_token()
     engine.family.configure("diskhoard", str(data_dir), token_file=str(data_dir / "mcp-token"))
-    relay = CopilotRelay("talos", str(data_dir), app_name="Talos's Hoard")
+    relay = CopilotRelay("diskhoard", str(data_dir), app_name="Talos's Hoard")
     engine.restore_snapshot()
 
     @asynccontextmanager

@@ -10,6 +10,7 @@ import json
 import secrets
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -119,15 +120,15 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
             native_sources[source] = (native_source, f"http://127.0.0.1:{port}/{target}", str(modules[target].data_dir / "mcp-token"))
 
         def build_native(key, path):
-            instance = factory(key, path)
-            if key == "activity":
-                instance.state.sources_registry.native_sources = native_sources
             if key == "audio":
                 from funes_hoard.hoard_link import family
                 from funes_hoard.hoard_link.tokens import read_or_create_token
                 activity_path = modules["activity"].data_dir
                 read_or_create_token(activity_path / "mcp-token")
                 family.configure("funes", str(activity_path), token_file=str(activity_path / "mcp-token"))
+            instance = factory(key, path)
+            if key == "activity":
+                instance.state.sources_registry.native_sources = native_sources
             return instance
         for module in modules.values():
             module.factory = build_native
@@ -165,6 +166,18 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
         verdict = check_request(request.method, dict(request.headers), port, (), strict_ports=True)
         if verdict:
             return JSONResponse({"error": verdict[1]}, status_code=verdict[0])
+        if request.url.path in ("/api/copilot/info", "/api/copilot/proxy"):
+            # The canonical launcher uses root URLs; keep each native page's
+            # original assistant identity and persisted conversation space.
+            try:
+                referer = urlsplit(request.headers.get("referer", ""))
+            except ValueError:
+                referer = None
+            if referer is not None and (referer.scheme, referer.netloc.lower()) == (request.url.scheme, request.url.netloc.lower()):
+                key = referer.path.split("/", 2)[1] if referer.path.startswith("/") else ""
+                if key in modules and referer.path.startswith("/" + key + "/"):
+                    from .native_response import NativeResponse
+                    return NativeResponse(modules[key], request.url.path.lstrip("/"), name=name, product=product, on_quit=persist)
         return await call_next(request)
 
     def authorize(request):
@@ -285,8 +298,6 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
     @app.api_route("/{key}/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"])
     async def module_route(key: str, path: str, request: Request):
         module = module_for(key)
-        if path.startswith("api/copilot/"):
-            return RedirectResponse("/" + path, status_code=307)
         if module.app is None and not path.startswith("api/"):
             return RedirectResponse("/#" + key, status_code=303)
         from .native_response import NativeResponse
