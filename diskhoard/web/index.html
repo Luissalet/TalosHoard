@@ -39,6 +39,11 @@ a{color:var(--acc)}
 ::-webkit-scrollbar-track{background:transparent}
 
 #app{display:flex;flex-direction:column;height:100%}
+/* Inside Talos the shell prepends a navigation bar to <body>: let #app take the
+   remaining height instead of 100%, or the selection bar falls off-screen. */
+body:has(> .fusion-bar){display:flex;flex-direction:column}
+body:has(> .fusion-bar) > #app{flex:1;min-height:0;height:auto}
+th.selall{cursor:pointer;text-align:center}
 
 /* ---------- pantalla de inicio ---------- */
 #start{flex:1;overflow:auto;padding:40px 28px}
@@ -716,7 +721,8 @@ function renderExplorer() {
   // Peso, Tamaño y % carpeta son la misma magnitud: las tres ordenan por tamaño
   $('#p-explorer').innerHTML = entries.length ? `
     <table><thead><tr>
-      <th style="width:34px"></th>
+      <th style="width:34px" class="selall" title="Seleccionar todo (Ctrl+A)"><input type="checkbox" class="cbx" id="ckAll"
+        ${entries.length && entries.every(e => S.sel.has(e.path)) ? 'checked' : ''}></th>
       <th data-s="name" class="${sc('name').trim()}">Nombre${arrow('name')}</th>
       <th data-s="size" class="${sc('size').trim()}" style="width:22%"
           title="Ordena por tamaño">Peso</th>
@@ -734,6 +740,13 @@ function renderExplorer() {
     if (S.sort === k) S.asc = !S.asc; else { S.sort = k; S.asc = (k === 'name'); }
     renderExplorer();
   });
+  const selAll = $('#p-explorer th.selall');
+  if (selAll) selAll.onclick = ev => {
+    ev.stopPropagation(); ev.preventDefault();
+    const all = entries.every(e => S.sel.has(e.path));
+    entries.forEach(e => all ? S.sel.delete(e.path) : S.sel.set(e.path, e));
+    renderExplorer();
+  };
   $$('#p-explorer tbody tr').forEach(tr => {
     const p = tr.dataset.p, isdir = tr.dataset.d === '1';
     const ent = entries.find(e => e.path === p);
