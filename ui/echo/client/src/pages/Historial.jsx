@@ -5,6 +5,7 @@ import { useApp } from "../App.jsx";
 import { Chip, Empty, PageHeader } from "../components/ui.jsx";
 import { KIND_LABEL, KIND_CHIP, when, dayKey } from "../format.js";
 import ClipBundle from "../components/ClipBundle.jsx";
+import ClipReader from "../components/ClipReader.jsx";
 
 const KIND_FILTERS = ["", "text", "url", "email", "path", "code", "number", "image"];
 
@@ -31,7 +32,7 @@ function LockIcon() {
   );
 }
 
-function ClipRow({ clip, onCopy, onPin, onDelete, onLabel, selected, onSelect, selectionFull }) {
+function ClipRow({ clip, onCopy, onRead, onPin, onDelete, onLabel, selected, onSelect, selectionFull }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(clip.label || "");
   // What the field was loaded with: a reload that changes the label (an assistant edit) only moves an untouched field.
@@ -85,6 +86,7 @@ function ClipRow({ clip, onCopy, onPin, onDelete, onLabel, selected, onSelect, s
           {clip.label && <Chip className="chip-accent">{clip.label}</Chip>}
         </div>
       </button>
+      {clip.kind !== "image" && <button type="button" className="btn btn-sm" onClick={() => onRead(clip.id)} aria-label={`Leer texto de copia ${clip.id}`}>Leer texto</button>}
       {editing ? (
         <input
           className="field w-40"
@@ -111,6 +113,7 @@ export default function Historial() {
   const [lastDeleted, setLastDeleted] = useState(null);
   const [selected, setSelected] = useState([]);
   const [comparisonRevision, setComparisonRevision] = useState(0);
+  const [reading, setReading] = useState(null);
 
   function select(id) {
     setSelected((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
@@ -118,7 +121,7 @@ export default function Historial() {
 
   const refresh = useCallback(async () => {
     if (q.trim()) {
-      const { hits } = await api.search({ q, kind: kind || undefined, limit: 200 });
+      const { hits } = await api.search({ q, kind: kind || undefined, limit: 100 });
       setClips(hits);
     } else {
       const { clips } = await api.clips({ kind: kind || undefined, limit: 200 });
@@ -184,6 +187,7 @@ export default function Historial() {
         </div>
       </div>
 
+      {reading !== null && <ClipReader key={reading} id={reading} onClose={() => setReading(null)} refreshRevision={comparisonRevision} />}
       <ClipBundle ids={selected} onChange={setSelected} refreshRevision={comparisonRevision} />
 
       {clips.length === 0 ? (
@@ -194,7 +198,7 @@ export default function Historial() {
             <div className="help mb-2">{group.key}</div>
             <div className="panel-white p-0">
               {group.clips.map((clip) => (
-                <ClipRow key={clip.id} clip={clip} onCopy={copy} onPin={pin} onDelete={remove} onLabel={label} selected={selected.includes(clip.id)} onSelect={select} selectionFull={selected.length >= 20} />
+                <ClipRow key={clip.id} clip={clip} onCopy={copy} onRead={setReading} onPin={pin} onDelete={remove} onLabel={label} selected={selected.includes(clip.id)} onSelect={select} selectionFull={selected.length >= 20} />
               ))}
             </div>
           </div>
