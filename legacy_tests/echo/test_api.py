@@ -108,6 +108,8 @@ def test_search_endpoint(client):
     result = client.get("/api/search", params={"q": "valdeniebla"}).json()
     assert result["count"] >= 1
     assert "<mark>" in result["hits"][0]["snippet"]
+    assert client.get("/api/search", params={"q": "valdeniebla", "limit": 100}).status_code == 200
+    assert client.get("/api/search", params={"q": "valdeniebla", "limit": 200}).status_code == 400
 
 
 def test_agent_tools_and_auth(client):
@@ -168,6 +170,33 @@ def test_agent_clip_get_refuses_sensitive_content(client):
     recent = client.post("/api/agent/call", json={"name": "clip_recent", "arguments": {"n": 5}}, headers=auth).json()
     hit = next(c for c in recent["clips"] if c["id"] == clip["id"])
     assert hit["preview"] == "[oculto]"
+
+
+def test_text_reader_pages_match_native_unicode_offsets_without_writes(client):
+    svc = client.services
+    text = "á" * 3999 + "🧭" + "segunda página\r\n" + "z" * 16000 + "\nDESPUÉS DE 20K ñ🧭\n"
+    clip = svc.clips.capture_text(text, source_app="fixture-reader", source_title="", now=svc.now())
+    before = svc.clips.get(clip["id"])
+    auth = {"Authorization": f"Bearer {svc.token}"}
+    pages = []
+    for offset in range(0, len(text), 4000):
+        response = client.get(f"/api/clips/{clip['id']}/text", params={"offset": offset})
+        assert response.status_code == 200
+        page = response.json()
+        native = client.post("/api/agent/call", json={"name": "clip_get", "arguments": {
+            "id": clip["id"], "offset": offset, "max_chars": 4000,
+        }}, headers=auth)
+        assert native.status_code == 200 and native.json() == page
+        assert page["text"] == text[offset:offset + 4000]
+        assert page["chars"] == len(text)
+        assert page["truncated"] is (offset + 4000 < len(text))
+        pages.append(page["text"])
+    assert pages[0].endswith("🧭") and pages[1].startswith("segunda página\r\n")
+    assert "".join(pages) == text
+    assert svc.clips.get(clip["id"]) == before and client.backend.written == []
+    assert client.get("/api/clips/999999/text").status_code == 404
+    secret = svc.clips.capture_text("sk-abcdefghijklmnopqrstuvwx", source_app="fixture", source_title="", now=svc.now())
+    assert client.get(f"/api/clips/{secret['id']}/text").status_code == 403
 
 
 def test_agent_clip_bundle_keeps_order_text_and_origin(client):

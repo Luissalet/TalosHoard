@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from ..agent_tools import BundleArgs, CompareArgs, SelectionSaveArgs, DeleteArgs, call_tool, run_bundle, run_compare
+from ..agent_tools import BundleArgs, CompareArgs, GetArgs, SelectionSaveArgs, DeleteArgs, call_tool, run_bundle, run_compare, run_get
 from .deps import services
 
 router = APIRouter(prefix="/api/clips")
@@ -110,6 +110,23 @@ def get_clip(request: Request, clip_id: int):
     if clip is None:
         raise HTTPException(404, "Clip not found.")
     return clip
+
+
+@router.get("/{clip_id}/text")
+def read_clip_text(
+    request: Request, clip_id: int,
+    offset: int = Query(0, ge=0),
+    max_chars: int = Query(4000, ge=1, le=50000),
+):
+    """Read a page using clip_get's native character offsets and access checks."""
+    try:
+        return run_get(services(request), GetArgs(id=clip_id, offset=offset, max_chars=max_chars))
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except PermissionError as error:
+        raise HTTPException(403, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
 
 
 @router.patch("/{clip_id}")

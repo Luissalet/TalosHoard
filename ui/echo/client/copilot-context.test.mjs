@@ -41,6 +41,14 @@ test("an open label editor yields the real clip, without its full text", async (
   assert.deepEqual(ctx.view.editor.fields, { label: "x" });
 });
 
+test("the text reader reports its native page and clip metadata without the text", async () => {
+  const reader = { kind: "clip-reader", object_id: "7", dirty: false, fields: { offset: 4000, max_chars: 4000, state: "ready" } };
+  const ctx = await buildContext({ hash: "#/historial", editors: [reader], getClip });
+  assert.equal(ctx.active_objects[0].object_id, "7");
+  assert.deepEqual(ctx.view.editor, reader);
+  assert.equal(JSON.stringify(ctx).includes("very/long"), false);
+});
+
 test("sensitive, deleted, unknown and creation ids yield no object and never throw", async () => {
   for (const id of ["8", "9", "404", "new", null]) {
     const ctx = await buildContext({ hash: "", editors: [editor(id)], getClip });
