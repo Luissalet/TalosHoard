@@ -1,6 +1,23 @@
 @import "tailwindcss";
 @import "./hoard-theme.css";
 
+.clip-bundle { border-block: 1px solid var(--line); padding-block: 16px; }
+.clip-bundle-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.clip-selected-ids { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.clip-bundle-preview { margin-top: 18px; }
+.clip-bundle-order { margin-block: 16px; padding: 0; list-style: none; }
+.clip-bundle-order li { display: flex; align-items: center; gap: 8px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+.clip-bundle-order p { overflow-wrap: anywhere; }
+.clip-bundle-text { resize: vertical; white-space: pre-wrap; }
+.clip-bundle-error { color: var(--danger-ink); margin-top: 12px; }
+.clip-selection { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+@media (max-width: 600px) {
+  .clip-bundle-order li { flex-wrap: wrap; }
+  .clip-bundle-order li > div { flex-basis: 100%; }
+  .row:has(.clip-selection) { flex-wrap: wrap; }
+  .row:has(.clip-selection) .row-main { flex-basis: calc(100% - 42px); }
+}
+
 /* Own variables point at the shared --hoard-* tokens (hoard-theme.css). */
 :root {
   --accent: var(--hoard-accent);

@@ -28,6 +28,7 @@ export const api = {
 
   clips: (params) => request("GET", "/clipboard/api/clips", { params }),
   clip: (id) => request("GET", `/clipboard/api/clips/${id}`),
+  bundle: (ids) => request("POST", "/clipboard/api/clips/bundle", { body: { ids, max_chars_per_clip: 20000 } }),
   addClip: (text) => request("POST", "/clipboard/api/clips", { body: { text } }),
   updateClip: (id, patch) => request("PATCH", `/clipboard/api/clips/${id}`, { body: patch }),
   removeClip: (id) => request("DELETE", `/clipboard/api/clips/${id}`),

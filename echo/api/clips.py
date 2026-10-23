@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+from ..agent_tools import BundleArgs, run_bundle
 from .deps import services
 
 router = APIRouter(prefix="/api/clips")
@@ -50,6 +51,19 @@ def add_clip(request: Request, body: ClipCreate):
     """What the assistant (and the UI) use to put text on the clipboard: sets
     the OS clipboard and records the clip in the same call."""
     return services(request).set_clipboard_text(body.text)
+
+
+@router.post("/bundle")
+def bundle_clips(request: Request, body: BundleArgs):
+    """Read an ordered selection through the same handler as clip_bundle."""
+    try:
+        return run_bundle(services(request), body)
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except PermissionError as error:
+        raise HTTPException(403, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
 
 
 @router.delete("")
