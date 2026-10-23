@@ -24,6 +24,7 @@ Source tool definitions and implementations are incorporated in this repository.
 | clipboard | clip_search | clip_search |
 | clipboard | clip_get | clip_get |
 | clipboard | clip_bundle | clip_bundle |
+| clipboard | clip_compare | clip_compare |
 | clipboard | clip_set | clip_set |
 | clipboard | clip_copy | clip_copy |
 | clipboard | clip_pin | clip_pin |

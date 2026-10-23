@@ -21,6 +21,10 @@ Cada módulo conserva su interfaz completa. Todo comparte el tema de los Hoards,
 
 En el Historial del portapapeles puedes seleccionar hasta 20 copias guardadas y **Reunir copias**: revisar texto, origen y fecha, cambiar el orden, elegir separador, copiar todo junto o descargar TXT. La selección se conserva al filtrar y sus identificadores siguen visibles para quitar entradas. Las imágenes aportan solo el OCR ya guardado, sin adjuntar el archivo. Se leen hasta 20.000 caracteres por copia, con aviso explícito si el texto es parcial. La vista previa no modifica el historial y reutiliza `clip_bundle`; API propia `POST /clipboard/api/clips/bundle`. La herramienta nativa de reunir copias conserva su contrato.
 
+Con exactamente dos copias seleccionadas, **Comparar dos copias** lee explícitamente A/B con el mismo lector nativo y muestra diferencias literales por líneas, orígenes/fechas y conteos. Espacios, tabulaciones, LF/CRLF y ausencia de salto final son visibles. Intercambiar A/B cambia el orden; editar y refrescar por copilot retira resultados incompatibles y conserva borradores. Copiar incluye snapshot y alcance consultados. Sólo texto guardado: imágenes aportan OCR ya almacenado, sin ejecutarlo, comparar píxeles, capturar ni leer el portapapeles real. Usa difflib de Python, sin modelo/dependencia nueva; no promete diff mínimo, equivalencia semántica ni parche aplicable.
+
+`clip_compare {left_id,right_id,max_chars_per_clip}` y `POST /clipboard/api/clips/compare` comparten cálculo. Reutiliza IDs distintos y límite del lector20.000caracteres por texto (herramienta8.000por defecto; UI20.000). `left.truncated`, `right.truncated` y `text_scope=extracts` señalan extractos; si coinciden no se afirma igualdad de clips completos. UI/API reciben todas las filas. La respuesta agente/MCP conserva el recorte aproximado20KB heredado: puede cortar filas y añadir un bloque **superior** `truncated`, separado del carácter parcial de cada clip; conteos/total_rows describen el cálculo completo. Una fila anidada muy grande puede superar ese presupuesto heredado. No se cambió ni eludió el recorte global. Consulta un prefijo menor o clip_get para el texto y no presentes respuesta recortada como diff completo. Historial y selecciones no se modifican; copiar resultado requiere acción explícita.
+
 ## Arranque
 
 Dentro de **Reunir copias**, **Selecciones guardadas** conserva nombre, hasta 20
@@ -52,7 +56,7 @@ Al activar una función se reanuda su comportamiento nativo, incluidos sus ajust
 
 ## API, MCP y compatibilidad
 
-El catálogo contiene **96 herramientas**: las 91 originales, tres para selecciones guardadas y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
+El catálogo contiene **97 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`.
 

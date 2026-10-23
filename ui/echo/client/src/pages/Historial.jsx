@@ -110,6 +110,7 @@ export default function Historial() {
   const [clips, setClips] = useState([]);
   const [lastDeleted, setLastDeleted] = useState(null);
   const [selected, setSelected] = useState([]);
+  const [comparisonRevision, setComparisonRevision] = useState(0);
 
   function select(id) {
     setSelected((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
@@ -129,7 +130,10 @@ export default function Historial() {
     const timer = setInterval(refresh, 4000);
     return () => clearInterval(timer);
   }, [refresh]);
-  useEffect(() => setRefreshHandler(refresh), [refresh]);
+  useEffect(() => setRefreshHandler(async () => {
+    setComparisonRevision(value => value + 1);
+    await refresh();
+  }), [refresh]);
   useEffect(() => setViewState({
     page: "history",
     filters: { ...(kind ? { kind } : {}), ...(q.trim() ? { q: q.trim() } : {}) },
@@ -180,7 +184,7 @@ export default function Historial() {
         </div>
       </div>
 
-      <ClipBundle ids={selected} onChange={setSelected} />
+      <ClipBundle ids={selected} onChange={setSelected} refreshRevision={comparisonRevision} />
 
       {clips.length === 0 ? (
         <Empty title="Nada por aquí todavía">Copia algo y aparecerá en este historial.</Empty>

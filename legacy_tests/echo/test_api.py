@@ -113,7 +113,7 @@ def test_search_endpoint(client):
 def test_agent_tools_and_auth(client):
     catalog = client.get("/api/agent/tools").json()
     names = [t["name"] for t in catalog["tools"]]
-    assert names == ["clip_recent", "clip_search", "clip_get", "clip_bundle", "clip_set", "clip_copy", "clip_pin",
+    assert names == ["clip_recent", "clip_search", "clip_get", "clip_bundle", "clip_compare", "clip_selections", "clip_selection_save", "clip_selection_delete", "clip_set", "clip_copy", "clip_pin",
                       "clip_delete", "clip_status", "clip_capture"]
     for tool in catalog["tools"]:
         assert "Sinónimos:" in tool["description"] and tool["inputSchema"]["type"] == "object"

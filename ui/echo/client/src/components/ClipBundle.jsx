@@ -2,8 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { useApp } from "../App.jsx";
 import { KIND_LABEL } from "../format.js";
+import ClipComparison from "./ClipComparison.jsx";
 
-export default function ClipBundle({ ids, onChange }) {
+export default function ClipBundle({ ids, onChange, refreshRevision }) {
   const { notify } = useApp();
   const [bundle, setBundle] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -148,6 +149,7 @@ export default function ClipBundle({ ids, onChange }) {
       <p className="help">Se usa el texto guardado, incluido OCR si lo hay; las imágenes no se adjuntan. Hasta 20.000 caracteres por copia, con aviso si el texto es parcial.</p>
       <div className="mt-3 flex flex-wrap gap-2"><button className="btn btn-primary" onClick={copy}>Copiar textos juntos</button><button className="btn" onClick={download}>Descargar TXT</button></div>
     </div>}
+    <ClipComparison ids={ids} onChange={onChange} refreshRevision={refreshRevision} />
     </fieldset>
   </section>;
 }

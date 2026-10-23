@@ -849,8 +849,49 @@
     "module": "clipboard"
   },
   {
+    "name": "clip_compare",
+    "description": "Compare two saved clip texts literally by lines. Keywords: diferencias, comparar copias.\nUses the existing bundle reader and prefix limit. A/B IDs, origins, exact spaces/endings, added/removed/equal rows and full summary. Images contribute saved OCR text only. text_scope=extracts is not whole-clip equality; top-level truncated independently marks a capped agent response. No clipboard, capture, OCR, model or clip mutation. Not a semantic comparison or applicable patch.\nSinónimos: diferencias entre copias, comparar dos textos, qué cambió, líneas añadidas y eliminadas.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "left_id": {
+          "description": "Clip A ID from the existing history.",
+          "minimum": 1,
+          "title": "Left Id",
+          "type": "integer"
+        },
+        "right_id": {
+          "description": "Distinct clip B ID; differences describe A to B.",
+          "minimum": 1,
+          "title": "Right Id",
+          "type": "integer"
+        },
+        "max_chars_per_clip": {
+          "default": 8000,
+          "description": "Existing bundle prefix length per saved text. Native extract flags and agent response truncation are separate.",
+          "maximum": 20000,
+          "minimum": 1,
+          "title": "Max Chars Per Clip",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "left_id",
+        "right_id"
+      ],
+      "title": "CompareArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
     "name": "clip_selections",
-    "description": "List named clipboard selections: ordered clip IDs and composition options only, never content. Keywords: selecciones guardadas, colecciones de copias.",
+    "description": "List named clipboard selections: ordered IDs and options only. Keywords: selecciones.\nNever reads clip content.\nSinónimos: selecciones guardadas, colección de copias.",
     "annotations": {
       "readOnlyHint": true,
       "destructiveHint": false,
@@ -867,7 +908,7 @@
   },
   {
     "name": "clip_selection_save",
-    "description": "Create or update/rename a named selection of up to20 ordered clip IDs, separator and origin option. Omit id to create. Stores metadata only; does not read, copy, move, pin or edit clips. Use clip_bundle explicitly to review current contents.",
+    "description": "Save or rename a selection of ordered clip IDs and options. Keywords: guardar selección.\nUp to20 ordered clip IDs, separator and origin option. Omit id to create. Stores metadata only; does not read, copy, move, pin or edit clips. Use clip_bundle explicitly to review current contents.\nSinónimos: guardar selección, renombrar selección, guardar cambios.",
     "annotations": {
       "readOnlyHint": false,
       "destructiveHint": false,
@@ -933,7 +974,7 @@
   },
   {
     "name": "clip_selection_delete",
-    "description": "Delete only a saved selection by its selection ID; all original clips remain untouched. Keywords: eliminar selección guardada.",
+    "description": "Delete a saved selection by ID, preserving every clip. Keywords: eliminar selección.\nRemoves only the saved selection metadata; all original clips remain untouched.\nSinónimos: eliminar selección guardada, borrar colección.",
     "annotations": {
       "readOnlyHint": false,
       "destructiveHint": true,

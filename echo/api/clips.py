@@ -9,10 +9,23 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from ..agent_tools import BundleArgs, SelectionSaveArgs, DeleteArgs, call_tool, run_bundle
+from ..agent_tools import BundleArgs, CompareArgs, SelectionSaveArgs, DeleteArgs, call_tool, run_bundle, run_compare
 from .deps import services
 
 router = APIRouter(prefix="/api/clips")
+
+
+@router.post("/compare")
+def compare_saved_clips(request: Request, body: CompareArgs):
+    """The UI reads the complete native comparison; agent response caps still apply in MCP."""
+    try:
+        return run_compare(services(request), body)
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except PermissionError as error:
+        raise HTTPException(403, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
 
 KIND_PATTERN = "^(text|url|email|path|code|number|image)$"
 
