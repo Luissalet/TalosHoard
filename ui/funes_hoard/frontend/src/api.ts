@@ -102,6 +102,14 @@ export interface ProjectItem {
   commits: number;
 }
 
+export interface ProjectResume {
+  project: string; since: number; until: number; last_activity: number | null;
+  active_s: number; found: boolean; evidence_limit: string;
+  recent_windows: { app: string; title: string; start: number; end: number; duration_s: number; human: string }[];
+  recent_files: { path: string; ts: number; when: string }[];
+  recent_commits: { subject: string; sha: string; ts: number; when: string }[];
+}
+
 export interface CommitItem {
   id: number;
   ts: number;
@@ -304,6 +312,8 @@ export const api = {
     req<{ items: FileEventItem[]; truncated: boolean }>("GET", `/activity/api/recent-files${qs(params)}`),
   projects: (params: { since?: string; limit?: number }) =>
     req<{ items: ProjectItem[]; truncated: boolean }>("GET", `/activity/api/projects${qs(params)}`),
+  projectResume: (params: { project: string; days: number; limit: number }) =>
+    req<ProjectResume>("POST", "/activity/api/projects/resume", params),
   whereWasI: (params: { before?: string; contexts?: number }) =>
     req<{ before: number; contexts: WhereContext[] }>("GET", `/activity/api/where-was-i${qs(params)}`),
   agentCalls: (limit = 50) => req<{ items: AgentCall[] }>("GET", `/activity/api/agent-calls${qs({ limit })}`),

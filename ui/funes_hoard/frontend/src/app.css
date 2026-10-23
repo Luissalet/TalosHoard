@@ -4,6 +4,20 @@
   overflow: hidden;
 }
 
+.project-resume { margin-bottom: 24px; }
+.resume-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.resume-heading h2 { margin: 0; font-size: 19px; overflow-wrap: anywhere; }
+.resume-controls { display: flex; gap: 16px; align-items: end; flex-wrap: wrap; margin: 20px 0; }
+.resume-controls label { display: grid; gap: 6px; max-width: 100%; }
+.resume-controls input { width: 160px; max-width: 100%; }
+.resume-result { overflow-wrap: anywhere; }
+.resume-result h3 { margin-top: 24px; }
+.resume-result dl { margin: 20px 0; }
+.resume-result dd { margin: 4px 0 16px; }
+.resume-result ul { padding-left: 20px; }
+.resume-result li { margin-bottom: 16px; }
+.resume-result li p { margin: 4px 0; }
+
 .sidebar {
   width: 232px;
   flex-shrink: 0;
