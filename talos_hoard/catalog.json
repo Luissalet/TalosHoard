@@ -849,6 +849,114 @@
     "module": "clipboard"
   },
   {
+    "name": "clip_selections",
+    "description": "List named clipboard selections: ordered clip IDs and composition options only, never content. Keywords: selecciones guardadas, colecciones de copias.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "description": "A tool without arguments.",
+      "properties": {},
+      "title": "Empty",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_selection_save",
+    "description": "Create or update/rename a named selection of up to20 ordered clip IDs, separator and origin option. Omit id to create. Stores metadata only; does not read, copy, move, pin or edit clips. Use clip_bundle explicitly to review current contents.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Omit to create; use a saved selection ID to update/rename it.",
+          "title": "Id"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "ids": {
+          "description": "Existing bundle limit: ordered clip IDs, each once. References can outlive a clip.",
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Ids",
+          "type": "array"
+        },
+        "separator": {
+          "default": "\n\n",
+          "enum": [
+            "\n\n",
+            "\n",
+            ", "
+          ],
+          "title": "Separator",
+          "type": "string"
+        },
+        "include_origins": {
+          "default": true,
+          "title": "Include Origins",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "ids"
+      ],
+      "title": "SelectionSaveArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
+    "name": "clip_selection_delete",
+    "description": "Delete only a saved selection by its selection ID; all original clips remain untouched. Keywords: eliminar selección guardada.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "id": {
+          "minimum": 1,
+          "title": "Id",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "DeleteArgs",
+      "type": "object"
+    },
+    "module": "clipboard"
+  },
+  {
     "name": "clip_set",
     "description": "Put text on the clipboard and store it as a clip (write). Keywords: cópiame esto, ponlo en el portapapeles.\nPut text on the user's clipboard and store it as a clip (write, idempotent by content). Use when the user says 'cópiame esto' or 'ponlo en el portapapeles'; always tell them plainly what you put there.\nSinónimos: cópiame esto, ponlo en el portapapeles, copia esto, pon esto en el portapapeles, pásame esto al portapapeles.",
     "annotations": {

@@ -16,6 +16,7 @@ A clip flagged sensitive is never returned to you, not even partially; never ask
 clip_set changes what the user will paste next: always say plainly what you just put on their clipboard.
 When the user gives a time ("in the last hour", "hoy", "esta mañana"), pass it as since ('1h', 'hoy', 'esta mañana') to clip_recent, or to clip_search when they also describe the content, instead of listing a huge n and filtering by eye.
 When the user selects several clip IDs to compare or summarise, use clip_bundle once to get their texts and origins together.
+Named selections keep only ordered clip IDs and composition options. Use clip_selections to find them, clip_selection_save to create/update them and clip_selection_delete to remove only the selection metadata. Reading a selection does not read or copy its clips; use clip_bundle explicitly to review their current contents.
 Never read the data folder or database directly; use these tools only."""
 
 
@@ -46,6 +47,14 @@ class GetArgs(BaseModel):
 class BundleArgs(BaseModel):
     ids: list[int] = Field(..., min_length=1, max_length=20, description="Clip IDs in the order the user wants to compare or summarise.")
     max_chars_per_clip: int = Field(8000, ge=1, le=20_000)
+
+
+class SelectionSaveArgs(BaseModel):
+    id: int | None = Field(None, ge=1, description="Omit to create; use a saved selection ID to update/rename it.")
+    name: str = Field(..., min_length=1, max_length=200)
+    ids: list[int] = Field(..., min_length=1, max_length=20, description="Existing bundle limit: ordered clip IDs, each once. References can outlive a clip.")
+    separator: Literal["\n\n", "\n", ", "] = "\n\n"
+    include_origins: bool = True
 
 
 class SetArgs(BaseModel):
@@ -139,6 +148,24 @@ def run_bundle(services: Services, args: BundleArgs) -> dict:
     return {"clips": clips, "count": len(clips)}
 
 
+def run_selections(services: Services, _: Empty) -> dict:
+    rows = services.clips.selections()
+    return {"selections": rows, "count": len(rows)}
+
+
+def run_selection_save(services: Services, args: SelectionSaveArgs) -> dict:
+    name = args.name.strip()
+    if not name:
+        raise ValueError("Give the selection a name.")
+    if len(set(args.ids)) != len(args.ids):
+        raise ValueError("Pass each clip ID once.")
+    return {"selection": services.clips.save_selection(**{**args.model_dump(), "name": name}, now=services.now())}
+
+
+def run_selection_delete(services: Services, args: DeleteArgs) -> dict:
+    return {"id": args.id, "deleted": services.clips.delete_selection(args.id)}
+
+
 def run_set(services: Services, args: SetArgs) -> dict:
     clip = services.set_clipboard_text(args.text)
     return {"ok": True, "clip": _public(clip)}
@@ -183,6 +210,9 @@ TOOLS: list[Tool] = [
     Tool("clip_search", "Search copied text and image OCR. Keywords: buscar copiado, texto en captura.\nFull-text search over clipboard history (text, optional image OCR, label, tags, source window title), diacritics-insensitive. OCR is derived and may contain recognition mistakes. Sensitive clips never surface real content, only `[oculto]`.\nSinónimos: buscar en el portapapeles, texto de imagen copiada, busca la url que copié.", SearchArgs, ann(True), run_search),
     Tool("clip_get", "Full text of one clip by id (paginated). Keywords: ver clip, texto completo, contenido copiado.\nThe full text of one clip (paginated with max_chars/offset for very long clips). Refuses outright when the clip is flagged sensitive.\nSinónimos: dame el texto completo, pégame lo que copié, contenido completo de la copia.", GetArgs, ann(True), run_get),
     Tool("clip_bundle", "Read selected clips together with source and date. Keywords: compare clips, comparar recortes.\nPass IDs from clip_recent or clip_search; returns their texts in the requested order with source app, window title and timestamp, ready to compare or summarise in one chat turn. Each text may be truncated; use clip_get with an offset for the rest.\nSinónimos: compara estas copias, resume estos enlaces, junta estos recortes, analiza estos clips.", BundleArgs, ann(True), run_bundle),
+    Tool("clip_selections", "List named clipboard selections: ordered clip IDs and composition options only, never content. Keywords: selecciones guardadas, colecciones de copias.", Empty, ann(True), run_selections),
+    Tool("clip_selection_save", "Create or update/rename a named selection of up to20 ordered clip IDs, separator and origin option. Omit id to create. Stores metadata only; does not read, copy, move, pin or edit clips. Use clip_bundle explicitly to review current contents.", SelectionSaveArgs, ann(False, False, False), run_selection_save),
+    Tool("clip_selection_delete", "Delete only a saved selection by its selection ID; all original clips remain untouched. Keywords: eliminar selección guardada.", DeleteArgs, ann(False, True, True), run_selection_delete),
     Tool("clip_set", "Put text on the clipboard and store it as a clip (write). Keywords: cópiame esto, ponlo en el portapapeles.\nPut text on the user's clipboard and store it as a clip (write, idempotent by content). Use when the user says 'cópiame esto' or 'ponlo en el portapapeles'; always tell them plainly what you put there.\nSinónimos: cópiame esto, ponlo en el portapapeles, copia esto, pon esto en el portapapeles, pásame esto al portapapeles.", SetArgs, ann(False, False, True), run_set),
     Tool("clip_copy", "Put an existing clip back on the clipboard by id (write). Keywords: vuelve a copiar, recuperar clip.\nPut an existing clip back on the user's clipboard by id (write). Refuses a sensitive clip unless `allow_sensitive` is true, and even then never returns the content to you.\nSinónimos: pégame el anterior, vuelve a copiar esto, copia ese de nuevo, recupera esa copia, ponlo otra vez en el portapapeles.", CopyArgs, ann(False, False, True), run_copy),
     Tool("clip_pin", "Pin or unpin a clip and optionally set its label/tags (write). Only when the user asks.\nSinónimos: fija esta copia, guarda esto, marca como favorito, etiqueta esta copia, quita de fijados.", PinArgs, ann(False, False, True), run_pin),

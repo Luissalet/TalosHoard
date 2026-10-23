@@ -34,7 +34,7 @@ def test_defaults_and_discovery_never_create_module_data(tmp_path):
     before = {t.ident for t in threading.enumerate()}
     with client(app) as c:
         assert not any(m["enabled"] for m in c.get("/api/modules").json()["modules"])
-        assert len(c.get("/api/agent/tools").json()["tools"]) == 93
+        assert len(c.get("/api/agent/tools").json()["tools"]) == 96
         for key in app.state.modules:
             assert c.get(f"/{key}/api/health").status_code == 409
             assert not (tmp_path / key).exists()

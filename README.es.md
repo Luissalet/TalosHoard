@@ -19,9 +19,22 @@ Memoria de pantalla, portapapeles, actividad, audio, vigilancia de servicios y g
 
 Cada módulo conserva su interfaz completa. Todo comparte el tema de los Hoards, el icono de Talos y el botón de Faustus.
 
-En el Historial del portapapeles puedes seleccionar hasta 20 copias guardadas y **Reunir copias**: revisar texto, origen y fecha, cambiar el orden, elegir separador, copiar todo junto o descargar TXT. La selección se conserva al filtrar y sus identificadores siguen visibles para quitar entradas. Las imágenes aportan solo el OCR ya guardado, sin adjuntar el archivo. Se leen hasta 20.000 caracteres por copia, con aviso explícito si el texto es parcial. La vista previa no modifica el historial y reutiliza `clip_bundle`; API propia `POST /clipboard/api/clips/bundle`. El catálogo MCP conserva sus 93 herramientas.
+En el Historial del portapapeles puedes seleccionar hasta 20 copias guardadas y **Reunir copias**: revisar texto, origen y fecha, cambiar el orden, elegir separador, copiar todo junto o descargar TXT. La selección se conserva al filtrar y sus identificadores siguen visibles para quitar entradas. Las imágenes aportan solo el OCR ya guardado, sin adjuntar el archivo. Se leen hasta 20.000 caracteres por copia, con aviso explícito si el texto es parcial. La vista previa no modifica el historial y reutiliza `clip_bundle`; API propia `POST /clipboard/api/clips/bundle`. La herramienta nativa de reunir copias conserva su contrato.
 
 ## Arranque
+
+Dentro de **Reunir copias**, **Selecciones guardadas** conserva nombre, hasta 20
+IDs, orden, separador y opción de origen/fecha. Cargar sustituye el borrador
+editable; Revisar lee el contenido actual. Permite guardar cambios (incluido
+renombrar), guardar como nueva y eliminar sólo la selección guardada. Ninguna de
+esas acciones copia, mueve, fija ni edita los clips originales. Los IDs ausentes
+siguen visibles para quitarlos y la lectura nativa mantiene su error explícito.
+Las herramientas `clip_selections`, `clip_selection_save` y
+`clip_selection_delete` comparten metadatos SQLite con
+`GET/POST /clipboard/api/clips/selections` y
+`DELETE /clipboard/api/clips/selections/{id}`. Tras recargar se conservan IDs y
+opciones; no se guarda texto ni imagen dentro de la selección. La captura, OCR
+y activación de módulos conservan sus controles explícitos existentes.
 
 Python 3.11 o posterior; las integraciones de escritorio de Windows requieren Windows. Ejecuta `Start.cmd` o sigue los comandos del [README en inglés](README.md#run). Abre `http://127.0.0.1:5220`. El servidor no abre ventanas por su cuenta. El Hub lo descubre mediante `faustus-plugin.json` y permite iniciarlo expresamente.
 
@@ -39,7 +52,7 @@ Al activar una función se reanuda su comportamiento nativo, incluidos sus ajust
 
 ## API, MCP y compatibilidad
 
-El catálogo contiene **93 herramientas**: las 91 originales y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
+El catálogo contiene **96 herramientas**: las 91 originales, tres para selecciones guardadas y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`.
 
