@@ -71,7 +71,7 @@ export default function ClipComparison({ ids, onChange, refreshRevision }) {
     {result && <div className="mt-4 space-y-4" aria-label="Diferencias de las copias">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[["A", result.left], ["B", result.right]].map(([side, clip]) => <div key={side} className="min-w-0">
-          <h4 className="font-semibold">{side} · {clip.label || `Copia #${clip.id}`} · #{clip.id}</h4>
+          <h4 className="font-semibold">{side} · {clip.label ? `${clip.label} · #${clip.id}` : `Copia #${clip.id}`}</h4>
           <p className="help break-words">{clip.source_app || "Origen desconocido"}{clip.source_title ? ` · ${clip.source_title}` : ""} · {stamp(clip)}</p>
           <p className="help">{clip.chars_read.toLocaleString("es-ES")} de {clip.chars.toLocaleString("es-ES")} caracteres{clip.truncated ? " · Texto parcial" : " · Texto completo"}</p>
           {!clip.has_text && <p className="help">Sin texto guardado{clip.kind === "image" ? ": imagen sin OCR guardado" : ""}. No se comparan píxeles ni se ejecuta OCR.</p>}
