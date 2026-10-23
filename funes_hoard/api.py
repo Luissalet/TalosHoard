@@ -650,6 +650,10 @@ def create_app(
     def ui_projects(since: Optional[str] = None, limit: int = 30):
         return queries.activity_projects(db, since, limit)
 
+    @app.post("/api/projects/resume")
+    def ui_project_resume(args: ProjectResumeArgs):
+        return queries.activity_project_resume(db, args.project, args.days, args.limit)
+
     @app.get("/api/where-was-i")
     def ui_where_was_i(before: Optional[str] = None, contexts: int = 5, all_categories: bool = False):
         return queries.activity_where_was_i(db, before, contexts, all_categories=all_categories)

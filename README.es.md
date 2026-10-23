@@ -1,5 +1,22 @@
 # Talos's Hoard
 
+En **Actividad → Proyectos**, **Retomar** consulta ventanas en primer plano,
+aperturas de archivos y commits registrados del proyecto elegido mediante el
+cálculo nativo `activity_project_resume`. El detalle tiene su propio intervalo
+(1–180 días) y máximo por tipo de evidencia (1–10), independientes del período de
+la tabla. Cambiar un parámetro retira el resultado anterior; un error conserva
+selección y parámetros para reintentar. El wrapper HTTP de la interfaz es
+`POST /activity/api/projects/resume` con `project`, `days` y `limit`; la herramienta
+MCP existente y el catálogo conjunto de 97 herramientas no cambian.
+
+Se conservan las reglas nativas de nombre exacto del proyecto. Sólo aparecen
+ventanas de al menos diez segundos; el tiempo activo incluye todos los episodios
+activos del intervalo. La última actividad en primer plano puede ser desconocida
+aunque existan aperturas registradas. Un intervalo vacío no prueba que no hubiera
+trabajo. Los títulos no prueban ediciones o pendientes; las rutas registradas no
+se comprueban ni se abren. Consultar contexto no activa capturas, modelos,
+descubrimientos de archivos ni otras aplicaciones.
+
 <img src="app-icon.png" width="96" alt="Talos icon">
 
 Memoria de pantalla, portapapeles, actividad, audio, vigilancia de servicios y gestión del disco en un único proceso. Absorbe **Argus, Echo, Funes, Cassandra y DiskHoard**, conservando sus motores, funciones e historiales.

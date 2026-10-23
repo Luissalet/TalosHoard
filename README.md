@@ -21,6 +21,22 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 
 The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`. The shared Hoard theme, product icon and Faustus copilot apply throughout. Capture backends and operating-system integrations retain their original platform requirements.
 
+In **Activity → Projects**, **Resume** reads the selected project's recorded
+foreground windows, file openings and commits through the existing
+`activity_project_resume` calculation. The detail has its own look-back interval
+(1–180 days) and maximum per evidence type (1–10), independent of the table's
+period. Changing a detail parameter clears the old result; errors retain the
+selection and parameters for Retry. The owner HTTP wrapper is
+`POST /activity/api/projects/resume` with `project`, `days` and `limit`; the
+existing MCP tool and combined 97-tool catalog are unchanged.
+
+Names match the native exact project rules. Only windows lasting at least ten
+seconds appear, while active time includes every active span in the interval.
+Last foreground activity may be unknown even when recorded file openings exist.
+An empty interval means no recorded evidence, not no work. Titles do not prove
+edits or pending changes, and recorded file paths are not checked or opened.
+Reading context starts no capture, model, file discovery or other application.
+
 Clipboard History supports an ordered selection of up to 20 saved clips. **Reunir copias** reads their texts through the existing `clip_bundle` handler, shows source/date and partial-text notices, and lets you reorder, choose a separator, copy the combined text or download TXT. Selections remain visible when filtering and can be removed individually. Images contribute saved OCR text only; image files are not attached. Each clip uses the native 20,000-character limit, explicitly marked when partial. Previewing never changes stored clips. The module retains its Spanish interface. The owner's UI endpoint is `POST /clipboard/api/clips/bundle`; The existing bundle tool is unchanged.
 
 With exactly two selected clips, **Comparar dos copias** reads A/B explicitly through the same native bundle reader and shows literal line differences, origins/dates and counts. Spaces, tabs, LF/CRLF and missing final newline remain visible. Swap changes selection order; edits and copilot refresh discard obsolete results without deleting selection drafts. Copy includes the actual snapshot and scope. Images contribute only saved OCR text; no OCR, capture or real clipboard read is triggered. Uses Python's standard difflib; no model, semantic equivalence, minimum diff or applicable patch is promised.

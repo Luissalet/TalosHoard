@@ -3,6 +3,7 @@ import { api, errorMessage, formatDuration, localeFor, type ProjectItem } from "
 import { STRINGS, type Lang } from "../i18n";
 import { useTurnRefresh } from "../copilot";
 import { EmptyState } from "./Common";
+import { ProjectResume } from "./ProjectResume";
 
 const RANGES = [
   { key: "last_7_days", since: "-7d" },
@@ -16,6 +17,7 @@ export function ProjectsView({ lang }: { lang: Lang }) {
   const [items, setItems] = useState<ProjectItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   useEffect(() => {
     setError(null);
@@ -53,6 +55,7 @@ export function ProjectsView({ lang }: { lang: Lang }) {
   return (
     <div>
       {picker}
+      {selectedProject && <ProjectResume key={selectedProject} project={selectedProject} lang={lang} onClose={() => setSelectedProject(null)} />}
       <div className="card">
         <table>
           <thead>
@@ -69,6 +72,7 @@ export function ProjectsView({ lang }: { lang: Lang }) {
               <tr key={p.project}>
                 <td>
                   <strong>{p.project}</strong>
+                  <div><button className="btn" type="button" onClick={() => setSelectedProject(p.project)} aria-label={`${t.project_resume}: ${p.project}`}>{t.project_resume}</button></div>
                 </td>
                 <td style={{ width: 90 }}>{formatDuration(p.time_s)}</td>
                 <td style={{ width: "35%" }}>
