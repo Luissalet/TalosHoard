@@ -4,6 +4,7 @@ import { setRefreshHandler } from "../copilot-context.js";
 import { useApp } from "../App.jsx";
 import { PageHeader, StatTile, Switch } from "../components/ui.jsx";
 import { bytes, when } from "../format.js";
+import { captureState } from "../components/capture-state.js";
 
 export default function Estado() {
   const { act, notify } = useApp();
@@ -21,7 +22,8 @@ export default function Estado() {
   useEffect(() => setRefreshHandler(refresh), [refresh]);
 
   async function togglePause() {
-    await act(() => (status.paused ? api.resume() : api.pause()), status.paused ? "Vigilando el portapapeles de nuevo." : "Portapapeles en pausa.");
+    const next = await act(() => (status.paused ? api.resume() : api.pause()));
+    notify(captureState(next).message);
     refresh();
   }
 
@@ -40,14 +42,18 @@ export default function Estado() {
     <div>
       <PageHeader title="Estado" description="Vigilancia del portapapeles, contadores y limpieza." />
 
-      <div className="panel-white mb-5 flex items-center justify-between gap-3">
+      <div className="panel-white mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="font-semibold">{status.paused ? "En pausa" : "Vigilando"}</div>
+          <div className="font-semibold">{captureState(status).label}</div>
           <div className="help mt-1">
             Backend: {status.backend}. Última copia: {when(status.last_capture_at)}.
           </div>
+          {!status.watching && !status.paused && <p className="help mt-2">Quitar la pausa no inicia la captura si está detenida.</p>}
         </div>
-        <Switch checked={!status.paused} onChange={togglePause} label="Vigilar el portapapeles" />
+        <div className="flex items-center gap-2">
+          <span className="help">Pausa de captura</span>
+          <Switch checked={status.paused} onChange={togglePause} label="Pausa de captura" />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

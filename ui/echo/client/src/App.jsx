@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { api } from "./api.js";
 import { setRefreshHandler } from "./copilot-context.js";
 import { Toast } from "./components/ui.jsx";
+import { captureState } from "./components/capture-state.js";
 import Historial from "./pages/Historial.jsx";
 import Fijados from "./pages/Fijados.jsx";
 import Estado from "./pages/Estado.jsx";
@@ -76,8 +77,9 @@ export default function App() {
   );
 
   const togglePause = useCallback(async () => {
-    await act(() => (status?.paused ? api.resume() : api.pause()), status?.paused ? "Vigilando el portapapeles de nuevo." : "Portapapeles en pausa.");
-  }, [act, status]);
+    const next = await act(() => (status?.paused ? api.resume() : api.pause()));
+    notify(captureState(next).message);
+  }, [act, status, notify]);
 
   const value = useMemo(() => ({ status, refreshStatus, notify, act }), [status, refreshStatus, notify, act]);
 
@@ -105,10 +107,11 @@ export default function App() {
           </nav>
           {status && (
             <div className="hidden px-5 pt-4 md:block">
-              <div className="help text-[11px]">{status.paused ? "En pausa" : "Vigilando"}</div>
+              <div className="help text-[11px]">{captureState(status).label}</div>
               <button type="button" className="btn btn-sm mt-2 w-full" onClick={togglePause}>
-                {status.paused ? "Reanudar" : "Pausar"}
+                {status.paused ? "Quitar pausa" : "Poner en pausa"}
               </button>
+              {!status.watching && !status.paused && <p className="help mt-2">Quitar la pausa no inicia la captura si está detenida.</p>}
               <div className="help mt-3 text-[11px]">
                 <span className="num font-semibold">{status.clips_count}</span> copias · <span className="num">{status.pinned_count}</span> fijadas
               </div>
