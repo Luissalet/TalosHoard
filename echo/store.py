@@ -51,6 +51,27 @@ class ClipStore:
         self.ocr_reader = ocr_reader
 
     # ---------- reads ----------
+    def selections(self) -> list[dict]:
+        with self.db.lock:
+            rows = self.db.conn.execute("SELECT * FROM clip_selections ORDER BY updated_at DESC, id DESC").fetchall()
+        return [{**dict(row), "ids": json.loads(row["ids"]), "include_origins": bool(row["include_origins"])} for row in rows]
+
+    def save_selection(self, *, id: int | None, name: str, ids: list[int], separator: str, include_origins: bool, now: float) -> dict:
+        values = (name, json.dumps(ids), separator, int(include_origins), now)
+        with self.db.transaction() as conn:
+            if id is None:
+                id = conn.execute("INSERT INTO clip_selections(name,ids,separator,include_origins,updated_at,created_at) VALUES (?,?,?,?,?,?)",
+                                  (*values, now)).lastrowid
+            elif not conn.execute("UPDATE clip_selections SET name=?,ids=?,separator=?,include_origins=?,updated_at=? WHERE id=?",
+                                  (*values, id)).rowcount:
+                raise LookupError(f"Selection {id} does not exist.")
+            row = conn.execute("SELECT * FROM clip_selections WHERE id=?", (id,)).fetchone()
+        return {**dict(row), "ids": json.loads(row["ids"]), "include_origins": bool(row["include_origins"])}
+
+    def delete_selection(self, id: int) -> bool:
+        with self.db.transaction() as conn:
+            return bool(conn.execute("DELETE FROM clip_selections WHERE id=?", (id,)).rowcount)
+
     def get(self, clip_id: int, include_deleted: bool = False) -> dict | None:
         sql = "SELECT * FROM clips WHERE id = ?"
         if not include_deleted:

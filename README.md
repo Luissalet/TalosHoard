@@ -21,9 +21,21 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 
 The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`. The shared Hoard theme, product icon and Faustus copilot apply throughout. Capture backends and operating-system integrations retain their original platform requirements.
 
-Clipboard History supports an ordered selection of up to 20 saved clips. **Reunir copias** reads their texts through the existing `clip_bundle` handler, shows source/date and partial-text notices, and lets you reorder, choose a separator, copy the combined text or download TXT. Selections remain visible when filtering and can be removed individually. Images contribute saved OCR text only; image files are not attached. Each clip uses the native 20,000-character limit, explicitly marked when partial. Previewing never changes stored clips. The module retains its Spanish interface. The owner's UI endpoint is `POST /clipboard/api/clips/bundle`; MCP capabilities and the 93-tool catalogue are unchanged.
+Clipboard History supports an ordered selection of up to 20 saved clips. **Reunir copias** reads their texts through the existing `clip_bundle` handler, shows source/date and partial-text notices, and lets you reorder, choose a separator, copy the combined text or download TXT. Selections remain visible when filtering and can be removed individually. Images contribute saved OCR text only; image files are not attached. Each clip uses the native 20,000-character limit, explicitly marked when partial. Previewing never changes stored clips. The module retains its Spanish interface. The owner's UI endpoint is `POST /clipboard/api/clips/bundle`; The existing bundle tool is unchanged.
 
 ## Run
+
+Inside **Reunir copias**, **Selecciones guardadas** stores a named selection of
+up to 20 clip IDs, their order, separator and origin/date option. Load explicitly
+to replace the editable draft; review explicitly to read current clip contents.
+Save changes (including rename), save as new or delete only the saved selection.
+Original clips are never copied, moved, pinned or edited by these operations.
+Missing IDs remain visible/removable; the existing bundle reader reports them.
+Native tools `clip_selections`, `clip_selection_save` and `clip_selection_delete`
+share SQLite metadata with `GET/POST /clipboard/api/clips/selections` and
+`DELETE /clipboard/api/clips/selections/{id}`. IDs/options persist across reloads;
+the stored selection contains no clip text or image. Capture/OCR and module
+activation keep their existing explicit controls.
 
 Python 3.11+; Windows is required for Windows desktop capture and system integrations. From this folder:
 
@@ -51,7 +63,7 @@ On activation, the native engine resumes its normal behaviour, including its sav
 
 ## API and MCP
 
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 93 tools: all 91 native tools plus `talos_modules` and `talos_set_module`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
+`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 96 tools: the original 91 native tools, three saved-selection tools and `talos_modules` and `talos_set_module`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
 
 Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
 

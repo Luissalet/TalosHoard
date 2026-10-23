@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from ..agent_tools import BundleArgs, run_bundle
+from ..agent_tools import BundleArgs, SelectionSaveArgs, DeleteArgs, call_tool, run_bundle
 from .deps import services
 
 router = APIRouter(prefix="/api/clips")
@@ -64,6 +64,21 @@ def bundle_clips(request: Request, body: BundleArgs):
         raise HTTPException(403, str(error)) from error
     except ValueError as error:
         raise HTTPException(400, str(error)) from error
+
+
+@router.get("/selections")
+def selections(request: Request):
+    return call_tool(services(request), "clip_selections", {})
+
+
+@router.post("/selections")
+def save_selection(request: Request, body: SelectionSaveArgs):
+    return call_tool(services(request), "clip_selection_save", body.model_dump())
+
+
+@router.delete("/selections/{selection_id}")
+def delete_selection(request: Request, selection_id: int):
+    return call_tool(services(request), "clip_selection_delete", DeleteArgs(id=selection_id).model_dump())
 
 
 @router.delete("")

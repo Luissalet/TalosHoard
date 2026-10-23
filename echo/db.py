@@ -53,6 +53,18 @@ MIGRATIONS: list[str] = [
     END;
     CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     """,
+    # 2: named references to existing clips; no clip content is duplicated.
+    """
+    CREATE TABLE clip_selections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      ids TEXT NOT NULL,
+      separator TEXT NOT NULL,
+      include_origins INTEGER NOT NULL,
+      created_at REAL NOT NULL,
+      updated_at REAL NOT NULL
+    );
+    """,
 ]
 
 
