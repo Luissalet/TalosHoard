@@ -43,20 +43,12 @@ export function ProjectsView({ lang }: { lang: Lang }) {
       ))}
     </div>
   );
-  if (error) return <EmptyState title={t.load_error} body={error} />;
-  if (items.length === 0)
-    return (
-      <div>
-        {picker}
-        <EmptyState title={t.no_data_title} body={t.no_data_body} />
-      </div>
-    );
-
   return (
     <div>
       {picker}
       {selectedProject && <ProjectResume key={selectedProject} project={selectedProject} lang={lang} onClose={() => setSelectedProject(null)} />}
-      <div className="card">
+      {error ? <EmptyState title={t.load_error} body={error} /> : items.length === 0 ?
+        <EmptyState title={t.no_data_title} body={t.no_data_body} /> : <div className="card">
         <table>
           <thead>
             <tr>
@@ -94,7 +86,7 @@ export function ProjectsView({ lang }: { lang: Lang }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }
