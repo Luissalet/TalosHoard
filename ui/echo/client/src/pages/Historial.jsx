@@ -4,6 +4,7 @@ import { changedFields, clipPatch, rebaseForm, setRefreshHandler, setViewState }
 import { useApp } from "../App.jsx";
 import { Chip, Empty, PageHeader } from "../components/ui.jsx";
 import { KIND_LABEL, KIND_CHIP, when, dayKey } from "../format.js";
+import ClipBundle from "../components/ClipBundle.jsx";
 
 const KIND_FILTERS = ["", "text", "url", "email", "path", "code", "number", "image"];
 
@@ -30,7 +31,7 @@ function LockIcon() {
   );
 }
 
-function ClipRow({ clip, onCopy, onPin, onDelete, onLabel }) {
+function ClipRow({ clip, onCopy, onPin, onDelete, onLabel, selected, onSelect, selectionFull }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(clip.label || "");
   // What the field was loaded with: a reload that changes the label (an assistant edit) only moves an untouched field.
@@ -72,6 +73,7 @@ function ClipRow({ clip, onCopy, onPin, onDelete, onLabel }) {
 
   return (
     <div className="row" title={`${clip.source_app || "origen desconocido"} · ${when(clip.last_seen_at)} · copiado ${clip.times}×`}>
+      <input type="checkbox" className="clip-selection" checked={selected} disabled={!selected && selectionFull} onChange={() => onSelect(clip.id)} aria-label={`Seleccionar copia ${clip.id}: ${clip.preview || "sin texto"}`} />
       {clip.kind === "image" && <img src={api.imageUrl(clip.id)} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />}
       <button type="button" className="row-main min-w-0 flex-1 text-left" onClick={() => onCopy(clip.id)}>
         <div className="truncate font-medium">{clip.preview || "(vacío)"}</div>
@@ -107,6 +109,11 @@ export default function Historial() {
   const [q, setQ] = useState("");
   const [clips, setClips] = useState([]);
   const [lastDeleted, setLastDeleted] = useState(null);
+  const [selected, setSelected] = useState([]);
+
+  function select(id) {
+    setSelected((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
+  }
 
   const refresh = useCallback(async () => {
     if (q.trim()) {
@@ -143,6 +150,7 @@ export default function Historial() {
   }
   async function remove(id) {
     await act(() => api.removeClip(id), "Eliminado.");
+    setSelected((ids) => ids.filter((value) => value !== id));
     setLastDeleted(id);
     refresh();
   }
@@ -172,6 +180,8 @@ export default function Historial() {
         </div>
       </div>
 
+      <ClipBundle ids={selected} onChange={setSelected} />
+
       {clips.length === 0 ? (
         <Empty title="Nada por aquí todavía">Copia algo y aparecerá en este historial.</Empty>
       ) : (
@@ -180,7 +190,7 @@ export default function Historial() {
             <div className="help mb-2">{group.key}</div>
             <div className="panel-white p-0">
               {group.clips.map((clip) => (
-                <ClipRow key={clip.id} clip={clip} onCopy={copy} onPin={pin} onDelete={remove} onLabel={label} />
+                <ClipRow key={clip.id} clip={clip} onCopy={copy} onPin={pin} onDelete={remove} onLabel={label} selected={selected.includes(clip.id)} onSelect={select} selectionFull={selected.length >= 20} />
               ))}
             </div>
           </div>
