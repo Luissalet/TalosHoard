@@ -23,6 +23,10 @@ The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`,
 
 Clipboard History supports an ordered selection of up to 20 saved clips. **Reunir copias** reads their texts through the existing `clip_bundle` handler, shows source/date and partial-text notices, and lets you reorder, choose a separator, copy the combined text or download TXT. Selections remain visible when filtering and can be removed individually. Images contribute saved OCR text only; image files are not attached. Each clip uses the native 20,000-character limit, explicitly marked when partial. Previewing never changes stored clips. The module retains its Spanish interface. The owner's UI endpoint is `POST /clipboard/api/clips/bundle`; The existing bundle tool is unchanged.
 
+With exactly two selected clips, **Comparar dos copias** reads A/B explicitly through the same native bundle reader and shows literal line differences, origins/dates and counts. Spaces, tabs, LF/CRLF and missing final newline remain visible. Swap changes selection order; edits and copilot refresh discard obsolete results without deleting selection drafts. Copy includes the actual snapshot and scope. Images contribute only saved OCR text; no OCR, capture or real clipboard read is triggered. Uses Python's standard difflib; no model, semantic equivalence, minimum diff or applicable patch is promised.
+
+`clip_compare {left_id,right_id,max_chars_per_clip}` and `POST /clipboard/api/clips/compare` share one calculation. The existing reader allows distinct IDs and up to20,000characters per text (tool default8,000; UI20,000). `left.truncated`, `right.truncated`, `text_scope=extracts` describe partial text: matching extracts do not establish equality of whole clips. UI/API receive every calculated row. Agent/MCP retains its existing best-effort ~20KB cap, which may independently cut rows and add a top-level `truncated` block; summary/total_rows still describe the full calculation. A very large nested row can still exceed that inherited budget. No global cap was changed or bypassed. Request a shorter prefix or use clip_get for the original text; do not describe a capped response as a complete diff. Clips and saved selections are not modified; copying the result is explicit.
+
 ## Run
 
 Inside **Reunir copias**, **Selecciones guardadas** stores a named selection of
@@ -63,7 +67,7 @@ On activation, the native engine resumes its normal behaviour, including its sav
 
 ## API and MCP
 
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 96 tools: the original 91 native tools, three saved-selection tools and `talos_modules` and `talos_set_module`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
+`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 97 tools: the original 91 native tools, three saved-selection tools, `clip_compare` and `talos_modules` and `talos_set_module`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
 
 Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
 

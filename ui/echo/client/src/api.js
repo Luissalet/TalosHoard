@@ -29,6 +29,7 @@ export const api = {
   clips: (params) => request("GET", "/clipboard/api/clips", { params }),
   clip: (id) => request("GET", `/clipboard/api/clips/${id}`),
   bundle: (ids) => request("POST", "/clipboard/api/clips/bundle", { body: { ids, max_chars_per_clip: 20000 } }),
+  compare: (ids) => request("POST", "/clipboard/api/clips/compare", { body: { left_id: ids[0], right_id: ids[1], max_chars_per_clip: 20000 } }),
   selections: () => request("GET", "/clipboard/api/clips/selections"),
   saveSelection: (body) => request("POST", "/clipboard/api/clips/selections", { body }),
   deleteSelection: (id) => request("DELETE", `/clipboard/api/clips/selections/${id}`),
