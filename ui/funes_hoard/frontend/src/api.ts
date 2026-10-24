@@ -95,6 +95,8 @@ export interface WhereContext {
   commits: { subject: string; sha: string }[];
 }
 
+export interface WhereResult { before: number; evidence_limit: string; contexts: WhereContext[] }
+
 export interface ProjectItem {
   project: string;
   time_s: number;
@@ -314,8 +316,8 @@ export const api = {
     req<{ items: ProjectItem[]; truncated: boolean }>("GET", `/activity/api/projects${qs(params)}`),
   projectResume: (params: { project: string; days: number; limit: number }) =>
     req<ProjectResume>("POST", "/activity/api/projects/resume", params),
-  whereWasI: (params: { before?: string; contexts?: number }) =>
-    req<{ before: number; contexts: WhereContext[] }>("GET", `/activity/api/where-was-i${qs(params)}`),
+  whereWasI: (params: { before?: string; contexts?: number; all_categories?: boolean }) =>
+    req<WhereResult>("GET", `/activity/api/where-was-i${qs({ ...params, all_categories: params.all_categories === undefined ? undefined : String(params.all_categories) })}`),
   agentCalls: (limit = 50) => req<{ items: AgentCall[] }>("GET", `/activity/api/agent-calls${qs({ limit })}`),
 
   classifyRules: () => req<{ items: ClassifyRule[]; categories: string[] }>("GET", "/activity/api/classify/rules"),

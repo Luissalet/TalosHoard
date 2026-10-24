@@ -1,5 +1,18 @@
 # Talos's Hoard
 
+Activity → Today → **Where was I?** can read distinct recorded contexts before an
+optional local date/time, request up to20 and include the categories omitted by
+default. Blank date retains now/end-of-selected-day behavior. Read/Retry applies
+the fields explicitly; Back to this day restores the original three-context query.
+Results label the actual returned cut-off with time zone, requested maximum and
+category scope. A future cut-off is reduced to now by the existing native query.
+Known projects rank before bare apps within the three-day lookup; this is not a
+global chronological list. Show in timeline keeps its explicit navigation.
+Pending fields survive errors and copilot refresh of the applied query; edits
+discard obsolete responses and changing day resets the filter. Titles do not prove
+edits, and recorded paths are not opened or checked. Existing HTTP and
+`activity_where_was_i` MCP97 contracts/engine are unchanged.
+
 Clipboard History filters by **Aplicación registrada**, the exact, case-sensitive
 saved process name. Combine it with text/type; **Todas las aplicaciones** clears
 only the application. The result states its scope: up to 200 recent clips or 100

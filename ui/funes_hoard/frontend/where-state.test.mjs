@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { initialWhere, whereQuery, whereReducer as reduce } from './src/components/where-state.ts';
+
+test('an edited draft invalidates pending data; refresh retains draft and uses applied query, day reset rejects late data',()=>{
+  const data={before:0,evidence_limit:'foreground only',contexts:[]};
+  let state=initialWhere('2026-10-23',false);
+  state=reduce(state,{type:'start',day:state.day,ticket:1});
+  const draft={before:'2026-10-23T12:30',contexts:'5',allCategories:true};
+  state=reduce(state,{type:'edit',draft});
+  state=reduce(state,{type:'resolve',ticket:1,data,query:{before:'old',contexts:3,all_categories:false}});
+  assert.equal(state.result,null);assert.equal(state.busy,false);assert.deepEqual(state.draft,draft);
+  const query=whereQuery(draft,state.day,false);
+  assert.equal(query.contexts,5);assert.equal(query.all_categories,true);assert.match(query.before,/2026-10-23T\d\d:30:00.000Z/);
+  state=reduce(state,{type:'start',day:state.day,ticket:2});
+  state=reduce(state,{type:'resolve',ticket:2,data,query});
+  assert.equal(state.result.data.before,0);assert.deepEqual(state.applied,query);
+  const pending={...draft,contexts:'1'};
+  state=reduce(state,{type:'edit',draft:pending});
+  const refreshQuery=state.applied;
+  state=reduce(state,{type:'start',day:state.day,ticket:3});
+  state=reduce(state,{type:'resolve',ticket:3,data,query:refreshQuery});
+  assert.deepEqual(state.draft,pending);assert.equal(state.result.query.contexts,5);
+  state=reduce(state,{type:'start',day:state.day,ticket:4});
+  state=reduce(state,{type:'reject',ticket:4,error:'offline'});
+  assert.deepEqual(state.draft,pending);assert.equal(state.error,'offline');
+  state=reduce(state,{type:'start',day:state.day,ticket:5});
+  state=reduce(state,{type:'reset',day:'2026-10-22',isToday:false});
+  state=reduce(state,{type:'resolve',ticket:5,data,query});
+  assert.equal(state.result,null);assert.equal(state.error,null);
+  assert.deepEqual(state.draft,{before:'',contexts:'3',allCategories:false});
+  assert.deepEqual(state.applied,{before:'2026-10-22',contexts:3,all_categories:false});
+});
