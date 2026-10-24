@@ -1,5 +1,16 @@
 # Talos's Hoard
 
+En Historial del portapapeles, **Aplicación registrada** filtra por el nombre de
+proceso guardado exacto, distinguiendo mayúsculas y minúsculas. Combina texto y
+tipo; **Todas las aplicaciones** limpia sólo la aplicación. Se muestran hasta
+200 copias recientes o 100 coincidencias por relevancia, no un total global.
+El origen es el último retenido por la deduplicación nativa, no todas las
+aplicaciones anteriores. Cambiar filtros descarta respuestas antiguas; reintentar
+conserva filtros, lector, selección y borrador de reunión. La interfaz mantiene
+su castellano actual. HTTP listado/búsqueda y `clip_search` ya admiten `app`;
+`clip_recent` también lo admite ahora como opción, con el mismo filtro nativo y
+97 herramientas. Leer y filtrar no captura, carga modelos ni escribe copias.
+
 En **Actividad → Proyectos**, **Retomar** consulta ventanas en primer plano,
 aperturas de archivos y commits registrados del proyecto elegido mediante el
 cálculo nativo `activity_project_resume`. El detalle tiene su propio intervalo

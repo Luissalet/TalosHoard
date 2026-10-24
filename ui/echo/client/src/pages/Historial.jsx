@@ -111,7 +111,15 @@ export default function Historial() {
   const { act } = useApp();
   const [kind, setKind] = useState("");
   const [q, setQ] = useState("");
-  const [clips, setClips] = useState([]);
+  const [app, setApp] = useState("");
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const filterKey = JSON.stringify([kind, q.trim(), app]);
+  const currentFilter = useRef(filterKey);
+  currentFilter.current = filterKey;
+  const request = useRef(0);
+  const clips = result?.key === filterKey ? result.clips : [];
+  const loadError = result?.key === filterKey ? result.error : null;
   const [lastDeleted, setLastDeleted] = useState(null);
   const [selected, setSelected] = useState([]);
   const [comparisonRevision, setComparisonRevision] = useState(0);
@@ -140,18 +148,28 @@ export default function Historial() {
   }
 
   const refresh = useCallback(async () => {
-    if (q.trim()) {
-      const { hits } = await api.search({ q, kind: kind || undefined, limit: 100 });
-      setClips(hits);
-    } else {
-      const { clips } = await api.clips({ kind: kind || undefined, limit: 200 });
-      setClips(clips);
+    const ticket = ++request.current;
+    setLoading(true);
+    try {
+      const params = { kind: kind || undefined, app: app || undefined };
+      const response = q.trim()
+        ? await api.search({ ...params, q, limit: 100 })
+        : await api.clips({ ...params, limit: 200 });
+      if (ticket === request.current && currentFilter.current === filterKey) {
+        setResult({ key: filterKey, clips: q.trim() ? response.hits : response.clips, error: null });
+      }
+    } catch (error) {
+      if (ticket === request.current && currentFilter.current === filterKey) {
+        setResult({ key: filterKey, clips: [], error: error.message });
+      }
+    } finally {
+      if (ticket === request.current && currentFilter.current === filterKey) setLoading(false);
     }
-  }, [kind, q]);
+  }, [kind, q, app, filterKey]);
   useEffect(() => {
     refresh();
     const timer = setInterval(refresh, 4000);
-    return () => clearInterval(timer);
+    return () => { clearInterval(timer); request.current += 1; };
   }, [refresh]);
   useEffect(() => setRefreshHandler(async () => {
     setComparisonRevision(value => value + 1);
@@ -159,9 +177,9 @@ export default function Historial() {
   }), [refresh]);
   useEffect(() => setViewState({
     page: "history",
-    filters: { ...(kind ? { kind } : {}), ...(q.trim() ? { q: q.trim() } : {}) },
+    filters: { ...(kind ? { kind } : {}), ...(q.trim() ? { q: q.trim() } : {}), ...(app ? { app } : {}) },
     ids: clips.filter((c) => !c.sensitive).map((c) => c.id),
-  }), [kind, q, clips]);
+  }), [kind, q, app, clips]);
 
   async function copy(id) {
     await act(() => api.copyClip(id), "Copiado.");
@@ -192,12 +210,23 @@ export default function Historial() {
 
   return (
     <div>
-      <PageHeader title="Historial" description="Todo lo que has copiado, de más reciente a más antiguo.">
+      <PageHeader title="Historial" description="Recupera tus copias guardadas por texto, tipo o aplicación de origen.">
         {lastDeleted && <button type="button" className="btn btn-sm" onClick={undo}>Deshacer</button>}
       </PageHeader>
 
-      <div className="panel-white mb-5 grid gap-3 md:grid-cols-[2fr_3fr]">
-        <input className="field" placeholder="Buscar en el portapapeles…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="panel-white mb-5 grid gap-3">
+        <label>
+          <span className="label">Buscar texto</span>
+          <input className="field" placeholder="Buscar en el portapapeles…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <label>
+            <span className="label">Aplicación registrada</span>
+            <input className="field" value={app} maxLength={200} placeholder="Nombre exacto, por ejemplo editor.exe" aria-describedby="history-app-help" onChange={(e) => setApp(e.target.value)} />
+          </label>
+          <button type="button" className="btn" disabled={!app} onClick={() => setApp("")}>Todas las aplicaciones</button>
+        </div>
+        <p id="history-app-help" className="help">Coincidencia exacta, con mayúsculas y minúsculas. Es el último origen guardado de cada copia, no su historial de aplicaciones.</p>
         <div className="seg">
           {KIND_FILTERS.map((k) => (
             <button key={k || "todos"} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>
@@ -211,8 +240,21 @@ export default function Historial() {
       {image !== null && <ClipImage key={image} id={image} onClose={closeImage} refreshRevision={comparisonRevision} />}
       <ClipBundle ids={selected} onChange={setSelected} refreshRevision={comparisonRevision} />
 
-      {clips.length === 0 ? (
-        <Empty title="Nada por aquí todavía">Copia algo y aparecerá en este historial.</Empty>
+      <div className="help my-3 break-words" role="status" aria-live="polite">
+        {app ? <>Aplicación: <strong>{app}</strong>. </> : "Todas las aplicaciones. "}
+        {loading ? "Consultando…" : `${clips.length} ${clips.length === 1 ? "copia cargada" : "copias cargadas"}.`}
+        {q.trim() ? " Hasta 100 coincidencias, por relevancia." : " Hasta 200 copias, de más reciente a más antigua."}
+      </div>
+      {loadError ? (
+        <div className="panel-white" role="alert">
+          <p>No se pudo cargar el historial: {loadError}</p>
+          <button type="button" className="btn mt-3" disabled={loading} onClick={refresh}>Reintentar</button>
+        </div>
+      ) : clips.length === 0 ? (
+        loading ? <p className="help">Cargando copias…</p> :
+        <Empty title={app || kind || q.trim() ? "Sin coincidencias" : "Nada por aquí todavía"}>
+          {app || kind || q.trim() ? "Prueba otro texto, tipo o aplicación registrada." : "Copia algo y aparecerá en este historial."}
+        </Empty>
       ) : (
         groups.map((group) => (
           <div key={group.key} className="mb-5">

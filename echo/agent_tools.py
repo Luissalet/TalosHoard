@@ -30,6 +30,7 @@ class RecentArgs(BaseModel):
     n: int = Field(10, ge=1, le=200)
     kind: str | None = Field(None, pattern="^(text|url|email|path|code|number|image)$")
     since: str | float | None = Field(None, description=SINCE_FIELD)
+    app: str | None = Field(None, max_length=200, description="Restrict to one exact recorded source process name (case-sensitive).")
 
 
 class SearchArgs(BaseModel):
@@ -101,7 +102,7 @@ def _public(clip: dict) -> dict:
 
 def run_recent(services: Services, args: RecentArgs) -> dict:
     since = resolve_since(args.since, services.clock())
-    clips = services.clips.list(kind=args.kind, since=since, limit=args.n)
+    clips = services.clips.list(kind=args.kind, since=since, source_app=args.app, limit=args.n)
     out = {"clips": [_public(c) for c in clips], "count": len(clips)}
     if since is not None:
         out["since"] = since
