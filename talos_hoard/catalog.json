@@ -689,6 +689,20 @@
           "default": null,
           "description": "Only clips last seen at or after this: an age like '1h', '30m', 'hace 2 horas', a word (hoy, ayer, esta mañana, última hora / today, yesterday, last hour), an ISO date or epoch seconds.",
           "title": "Since"
+        },
+        "app": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Restrict to one exact recorded source process name (case-sensitive).",
+          "title": "App"
         }
       },
       "title": "RecentArgs",

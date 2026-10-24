@@ -60,3 +60,17 @@ def test_search_falls_back_to_any_word_when_not_all_match(services):
     hits = services.search.search("valdeniebla receta")  # nothing contains both words, two clips contain the first
     assert len(hits) == 2 and all("aldeniebla" in h["preview"] for h in hits)
     assert services.search.search("inexistente receta") == []
+def test_recorded_app_recent_and_search_share_exact_filter_without_mutation(services):
+    from echo.agent_tools import RecentArgs, SearchArgs, run_recent, run_search
+
+    rows = [services.clips.capture_text(text, source_app=app, source_title="QA", now=services.now())
+            for text, app in [("faro editor primero", "EditorQA.exe"),
+                              ("faro editor segundo", "editorqa.exe"),
+                              ("faro navegador", "BrowserQA.exe")]]
+    before = services.clips.list(limit=200)
+    expected = [rows[0]["id"]]
+    assert [r["id"] for r in run_recent(services, RecentArgs(app="EditorQA.exe"))["clips"]] == expected
+    assert [r["id"] for r in run_search(services, SearchArgs(q="faro", app="EditorQA.exe", kind="text"))["hits"]] == expected
+    assert run_recent(services, RecentArgs(app="MissingQA.exe"))["clips"] == []
+    assert run_recent(services, RecentArgs())["clips"] == run_recent(services, RecentArgs(app=""))["clips"]
+    assert services.clips.list(limit=200) == before

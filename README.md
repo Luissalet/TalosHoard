@@ -1,5 +1,16 @@
 # Talos's Hoard
 
+Clipboard History filters by **Aplicación registrada**, the exact, case-sensitive
+saved process name. Combine it with text/type; **Todas las aplicaciones** clears
+only the application. The result states its scope: up to 200 recent clips or 100
+search matches ranked by relevance, not a global count. The recorded source is
+the latest origin retained by native deduplication, not every past application.
+Filter changes discard obsolete results; retry retains filters, open reader,
+selection and bundle draft. The module keeps its existing Spanish interface.
+Existing HTTP list/search and `clip_search` already accept `app`; `clip_recent`
+now also accepts optional `app`, sharing the native filter (97 tools unchanged).
+Reading/filtering starts no capture or model and does not write saved clips.
+
 Clipboard → History now offers **Ver imagen** to inspect the complete saved PNG
 without copying it to the OS clipboard. Fit and 100% modes retain the full image,
 with local scrolling at original size, dimensions/source/ID and explicit retry.
