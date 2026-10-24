@@ -104,6 +104,7 @@ export async function buildContext({ hash, editors = [], getSession, getMinutes,
   const page = PAGE_NAMES[route.page] || route.page || "record";
   const active = [];
   const view = { page };
+  if (route.page === "buscar") view.search_scope = { session_id: route.query.get("session_id") || null };
 
   if (route.page === "sesiones" && route.id) {
     const session = await safe(() => getSession(route.id));

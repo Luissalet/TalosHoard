@@ -1,5 +1,17 @@
 # Talos's Hoard
 
+En **Audio → Sesión**, **Buscar en esta sesión** abre la búsqueda con su ID
+exacto, aunque otra sesión tenga el mismo título. Texto, tipo y fechas se
+combinan con ese ámbito. **Buscar en todas las sesiones** quita sólo el ámbito
+y conserva los campos. Un error ofrece reintento; cambiar criterios descarta
+respuestas anteriores. Los enlaces mantienen el minuto original, incluido00:00.
+Los recuentos son coincidencias devueltas dentro del límite nativo, no un total
+global. `GET /audio/api/search` y `scribe_search` admiten `session_id` opcional;
+omitido o vacío consulta todas, un ID inexistente devuelve cero coincidencias.
+Siguen97 herramientas y el mismo índice/tokenizador nativo. Sólo lee texto
+guardado: no inicia grabación, transcripción ni modelos. Los filtros se conservan
+al quitar el ámbito, sin prometer persistencia tras recargar o cambiar de página.
+
 Actividad → Hoy → **¿Dónde lo dejé?** permite consultar contextos distintos antes
 de una fecha/hora local opcional, pedir hasta20 e incluir las categorías omitidas
 por defecto. Fecha vacía conserva ahora/fin del día elegido. Consultar/Reintentar

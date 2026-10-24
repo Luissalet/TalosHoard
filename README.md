@@ -1,5 +1,16 @@
 # Talos's Hoard
 
+In **Audio → Session**, **Buscar en esta sesión** opens search for that exact
+session ID, including when titles repeat. Text, kind and date filters combine
+with that scope; searching all sessions removes only the scope and keeps the
+fields. Errors support retry and changed criteria retire stale results. Links
+retain original timestamps, including00:00. Counts describe returned native
+hits, not an exhaustive total. `GET /audio/api/search` and `scribe_search` accept
+optional `session_id`; omitted/empty searches all, an unknown ID returns no hits.
+The same native index/tokenizer and97 tools remain. This reads stored text without
+recording, transcription or model loading. No filter persistence across reloads
+or page changes is promised. The interface keeps its existing Spanish language.
+
 Activity → Today → **Where was I?** can read distinct recorded contexts before an
 optional local date/time, request up to20 and include the categories omitted by
 default. Blank date retains now/end-of-selected-day behavior. Read/Retry applies

@@ -11,11 +11,11 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/search")
-def search(request: Request, q: str = Query(..., min_length=1, max_length=200), kind: str | None = None, from_: str | None = Query(None, alias="from"), to: str | None = None, limit: int = Query(60, ge=1, le=300)):
+def search(request: Request, q: str = Query(..., min_length=1, max_length=200), kind: str | None = None, from_: str | None = Query(None, alias="from"), to: str | None = None, limit: int = Query(60, ge=1, le=300), session_id: str | None = Query(None, max_length=64)):
     if kind and kind not in KINDS:
         raise HTTPException(400, f"kind must be one of {', '.join(KINDS)}")
     start, end = bounds(from_, to)
-    return services(request).sessions.search(q, kind, start, end, limit)
+    return services(request).sessions.search(q, kind, start, end, limit, session_id=session_id)
 
 
 @router.get("/tags")

@@ -271,11 +271,14 @@ class SessionStore:
         return [segment_row(r) for r in rows]
 
     # ---------- search ----------
-    def search(self, q: str, kind: str | None = None, start: float | None = None, end: float | None = None, limit: int = 60) -> dict:
+    def search(self, q: str, kind: str | None = None, start: float | None = None, end: float | None = None, limit: int = 60, session_id: str | None = None) -> dict:
         match = fts_query(q)
         if not match:
             return {"query": q, "total": 0, "sessions": []}
         where, params = ["segments_fts MATCH ?"], [match]
+        if session_id:
+            where.append("g.session_id = ?")
+            params.append(session_id)
         if kind:
             where.append("s.kind = ?")
             params.append(kind)
