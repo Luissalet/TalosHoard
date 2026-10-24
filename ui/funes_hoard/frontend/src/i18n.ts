@@ -2,6 +2,12 @@ export type Lang = "en" | "es";
 
 export const STRINGS = {
   en: {
+    where_before: "Before (local date and time, optional)", where_count: "Maximum distinct contexts",
+    where_all_categories: "Include Media, Communication and Games", where_read: "Read contexts",
+    where_loading: "Reading recorded contexts…", where_reset: "Back to this day",
+    where_applied: "Returned cut-off", where_maximum: "Maximum requested",
+    where_all_applied: "All categories", where_work_applied: "Media, Communication and Games excluded",
+    where_scope: "Looks for distinct contexts overlapping the three days before the cut-off, with known projects first. Away/locked time and original windows shorter than 10 seconds are skipped. Blank date uses now for today or the end of the selected day; a future cut-off is reduced to now.",
     project_resume: "Resume", resume_title: "Recorded project context", resume_close: "Close context",
     resume_days: "Days before this query", resume_limit: "Maximum per evidence type",
     resume_read: "Read context", resume_retry: "Retry", resume_loading: "Reading project records…",
@@ -207,6 +213,12 @@ export const STRINGS = {
     sources_status_down: "Unreachable",
   },
   es: {
+    where_before: "Antes de (fecha y hora local, opcional)", where_count: "Máximo de contextos distintos",
+    where_all_categories: "Incluir multimedia, comunicación y juegos", where_read: "Consultar contextos",
+    where_loading: "Leyendo contextos registrados…", where_reset: "Volver a este día",
+    where_applied: "Corte devuelto", where_maximum: "Máximo solicitado",
+    where_all_applied: "Todas las categorías", where_work_applied: "Sin multimedia, comunicación ni juegos",
+    where_scope: "Busca contextos distintos que solapan los tres días anteriores al corte, con proyectos conocidos primero. Omite ausencias, bloqueos y ventanas originales menores de 10 segundos. Fecha vacía usa ahora para hoy o el fin del día elegido; un corte futuro se reduce a ahora.",
     project_resume: "Retomar", resume_title: "Contexto registrado del proyecto", resume_close: "Cerrar contexto",
     resume_days: "Días anteriores a esta consulta", resume_limit: "Máximo por tipo de evidencia",
     resume_read: "Consultar contexto", resume_retry: "Reintentar", resume_loading: "Leyendo registros del proyecto…",

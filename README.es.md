@@ -1,5 +1,18 @@
 # Talos's Hoard
 
+Actividad → Hoy → **¿Dónde lo dejé?** permite consultar contextos distintos antes
+de una fecha/hora local opcional, pedir hasta20 e incluir las categorías omitidas
+por defecto. Fecha vacía conserva ahora/fin del día elegido. Consultar/Reintentar
+aplica los campos explícitamente; Volver a este día restaura los tres contextos
+iniciales. El resultado muestra el corte real devuelto con zona, máximo pedido y
+categorías. Un corte futuro se reduce a ahora mediante el cálculo nativo.
+Los proyectos conocidos tienen prioridad sobre las apps sin proyecto en la ventana
+de tres días; no es una lista cronológica global. Ver en la línea de tiempo sigue
+siendo una navegación explícita. Los campos pendientes se conservan ante error y
+refresco del copilot sobre la consulta aplicada; editar descarta respuestas viejas
+y cambiar día restablece filtros. Los títulos no prueban ediciones ni se abren o
+verifican rutas. HTTP y MCP97 `activity_where_was_i` usan el motor existente.
+
 En Historial del portapapeles, **Aplicación registrada** filtra por el nombre de
 proceso guardado exacto, distinguiendo mayúsculas y minúsculas. Combina texto y
 tipo; **Todas las aplicaciones** limpia sólo la aplicación. Se muestran hasta

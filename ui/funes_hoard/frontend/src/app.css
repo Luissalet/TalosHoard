@@ -837,3 +837,12 @@ th { color: var(--hoard-text-dim); text-transform: none; font-size: 12px; }
   .content { padding: 16px; }
   .agent-lane__event { grid-template-columns: 60px 18px minmax(0, 1fr); gap: 8px; }
 }
+.where-controls { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(140px, 1fr); gap: 12px; margin: 16px 0; }
+.where-controls > label { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.where-controls input { width: 100%; min-width: 0; }
+.where-controls .where-checkbox { grid-column: 1 / -1; flex-direction: row; align-items: center; }
+.where-checkbox input { width: auto; flex: 0 0 auto; }
+.where-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.where-scope { font-size: 12px; line-height: 1.6; max-width: 72ch; margin: 10px 0; }
+.where-applied { font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 650px) { .where-controls { grid-template-columns: minmax(0, 1fr); } }

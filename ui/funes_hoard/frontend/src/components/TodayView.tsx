@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, GitCommit, History, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import {
   api,
   errorMessage,
@@ -11,12 +11,12 @@ import {
   type SpanItem,
   type SummaryResponse,
   type TimelineResponse,
-  type WhereContext,
 } from "../api";
 import { categoryColor } from "../categoryColors";
 import { categoryLabel, STRINGS, type Lang } from "../i18n";
 import { CategoryBarList, BarList, EmptyState } from "./Common";
 import { AgentLane } from './AgentLane';
+import { WhereWasICard } from "./WhereWasICard";
 import { useTurnRefresh } from "../copilot";
 import { setSelectedSpan } from "../copilot-context";
 
@@ -124,7 +124,7 @@ export function TodayView({
   const detail = hovered || selected;
 
   const picker = <DayPicker day={day} onChange={setDay} lang={lang} />;
-  const whereCard = <WhereWasICard day={day} isToday={isToday} lang={lang} onShow={onNavigate} />;
+  const whereCard = <WhereWasICard key="where-before" day={day} isToday={isToday} lang={lang} onShow={onNavigate} />;
   const agentLane = <AgentLane key={day} day={day} lang={lang} />;
   if (loading && !summary) return <div>{picker}{agentLane}</div>;
   if (error) {
@@ -132,6 +132,7 @@ export function TodayView({
       <div>
         {picker}
         {agentLane}
+        {whereCard}
         <EmptyState title={t.load_error} body={error} />
       </div>
     );
@@ -401,98 +402,6 @@ function WriteMyDayCard({ day, lang, hasActivity }: { day: string; lang: Lang; h
         </>
       )}
       {error && <p className="form-error">{error}</p>}
-    </div>
-  );
-}
-
-function WhereWasICard({
-  day,
-  isToday,
-  lang,
-  onShow,
-}: {
-  day: string;
-  isToday: boolean;
-  lang: Lang;
-  onShow: (day: string, at?: number) => void;
-}) {
-  const t = STRINGS[lang];
-  const [contexts, setContexts] = useState<WhereContext[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setError(null);
-    // Today: before now (so on Monday morning it shows Friday's last work);
-    // any other day: before that day ended.
-    api
-      .whereWasI({ before: isToday ? undefined : day, contexts: 3 })
-      .then((r) => !cancelled && setContexts(r.contexts))
-      .catch((err) => !cancelled && setError(errorMessage(err)));
-    return () => {
-      cancelled = true;
-    };
-  }, [day, isToday]);
-
-  useTurnRefresh(() => {
-    api
-      .whereWasI({ before: isToday ? undefined : day, contexts: 3 })
-      .then((r) => setContexts(r.contexts))
-      .catch(() => {});
-  });
-
-  if (contexts === null && !error) return null;
-  const fileName = (path: string) => path.split(/[\\/]/).pop() || path;
-  return (
-    <div className="card where-card" style={{ marginTop: 16 }}>
-      <div className="section-title">
-        <History size={14} style={{ marginRight: 6, verticalAlign: -2 }} />
-        {t.where_title}
-      </div>
-      <p className="muted" style={{ fontSize: 12, margin: "0 0 10px" }}>{isToday ? t.where_hint_now : t.where_hint_day}</p>
-      {error && <p className="form-error">{error}</p>}
-      {contexts && contexts.length === 0 && <p className="muted" style={{ fontSize: 13, margin: 0 }}>{t.where_empty}</p>}
-      <div className="where-list">
-        {(contexts || []).map((c) => {
-          const cDay = isoDay(new Date(c.end * 1000));
-          return (
-            <div className="where-item" key={`${c.start}-${c.project ?? c.app}`}>
-              <div className="row" style={{ justifyContent: "space-between", gap: 8, flexWrap: "nowrap" }}>
-                <div style={{ minWidth: 0 }}>
-                  <strong>{c.project || c.app}</strong>
-                  <span className="muted">
-                    {" · "}
-                    {cDay !== day ? `${formatLongDate(c.start, lang)}, ` : ""}
-                    {formatClock(c.start, lang)}–{formatClock(c.end, lang)} · {formatDuration(c.duration_s)}
-                  </span>
-                  {(c.recent_titles?.length ? c.recent_titles.slice(0, 2) : [c.title || "—"]).map((title) => (
-                    <div className="detail-title where-title" title={title} key={title}>
-                      {title}
-                    </div>
-                  ))}
-                </div>
-                <button className="btn btn-small" onClick={() => onShow(cDay, c.end - 1)}>
-                  {t.where_show}
-                </button>
-              </div>
-              {(c.files.length > 0 || c.commits.length > 0) && (
-                <ul className="where-refs">
-                  {c.files.slice(0, 3).map((f) => (
-                    <li key={f} title={f}>
-                      <FileText size={12} /> {fileName(f)}
-                    </li>
-                  ))}
-                  {c.commits.slice(0, 2).map((cm) => (
-                    <li key={cm.sha} title={cm.sha}>
-                      <GitCommit size={12} /> {cm.subject} <code>{cm.sha.slice(0, 7)}</code>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
