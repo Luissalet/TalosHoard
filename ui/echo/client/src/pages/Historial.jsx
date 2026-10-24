@@ -118,6 +118,7 @@ export default function Historial() {
   const currentFilter = useRef(filterKey);
   currentFilter.current = filterKey;
   const request = useRef(0);
+  const inFlight = useRef(null);
   const clips = result?.key === filterKey ? result.clips : [];
   const loadError = result?.key === filterKey ? result.error : null;
   const [lastDeleted, setLastDeleted] = useState(null);
@@ -147,8 +148,10 @@ export default function Historial() {
     setSelected((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
   }
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (poll = false) => {
+    if (poll && inFlight.current?.key === filterKey) return;
     const ticket = ++request.current;
+    inFlight.current = { key: filterKey, ticket };
     setLoading(true);
     try {
       const params = { kind: kind || undefined, app: app || undefined };
@@ -163,12 +166,13 @@ export default function Historial() {
         setResult({ key: filterKey, clips: [], error: error.message });
       }
     } finally {
+      if (inFlight.current?.ticket === ticket) inFlight.current = null;
       if (ticket === request.current && currentFilter.current === filterKey) setLoading(false);
     }
   }, [kind, q, app, filterKey]);
   useEffect(() => {
     refresh();
-    const timer = setInterval(refresh, 4000);
+    const timer = setInterval(() => refresh(true), 4000);
     return () => { clearInterval(timer); request.current += 1; };
   }, [refresh]);
   useEffect(() => setRefreshHandler(async () => {
@@ -248,7 +252,7 @@ export default function Historial() {
       {loadError ? (
         <div className="panel-white" role="alert">
           <p>No se pudo cargar el historial: {loadError}</p>
-          <button type="button" className="btn mt-3" disabled={loading} onClick={refresh}>Reintentar</button>
+          <button type="button" className="btn mt-3" disabled={loading} onClick={() => refresh()}>Reintentar</button>
         </div>
       ) : clips.length === 0 ? (
         loading ? <p className="help">Cargando copias…</p> :
