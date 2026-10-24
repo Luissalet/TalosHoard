@@ -75,6 +75,13 @@ Al activar una función se reanuda su comportamiento nativo, incluidos sus ajust
 
 ## API, MCP y compatibilidad
 
+En Portapapeles → Historial, **Ver imagen** abre el PNG guardado completo sin
+copiarlo al portapapeles. Puedes ajustarlo al espacio disponible o verlo al 100%
+con desplazamiento local, consultar dimensiones/origen/ID y reintentar una carga
+fallida. Conserva filtros y selección; el lector de texto sigue disponible.
+Usa las rutas nativas de imagen y metadatos. `clip_get` de MCP mantiene dimensiones
+y texto OCR: no devuelve píxeles ni realiza OCR nuevo.
+
 El catálogo contiene **97 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`.

@@ -72,7 +72,7 @@ export async function buildContext({ hash, editors = [], view = null, getClip })
   const seen = new Set();
   for (const e of editors) {
     const id = e?.object_id;
-    if (!["clip-label", "clip-reader"].includes(e?.kind) || !id || id === "new" || seen.has(String(id))) continue;
+    if (!["clip-label", "clip-reader", "clip-image"].includes(e?.kind) || !id || id === "new" || seen.has(String(id))) continue;
     seen.add(String(id));
     const clip = await safe(() => getClip(id));
     if (clip?.id && !clip.sensitive && !clip.deleted_at) {
