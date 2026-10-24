@@ -51,6 +51,7 @@ class TranscriptArgs(BaseModel):
 
 class SearchArgs(BaseModel):
     q: str = Field(..., min_length=1, max_length=200, description="Words to find (all must appear; last word matches as prefix).")
+    session_id: str | None = Field(None, max_length=64, description="Only this exact session id. Empty or omitted searches all sessions; an unknown id returns no matches.")
     kind: KindArg | None = None
     from_: str | None = Field(None, alias="from", description=f"Sessions started after this. {TIME_HELP}")
     to: str | None = Field(None, description=f"Sessions started before this. {TIME_HELP}")
@@ -188,7 +189,7 @@ def run_transcript(svc: Services, a: TranscriptArgs):
 
 
 def run_search(svc: Services, a: SearchArgs):
-    result = svc.sessions.search(a.q, a.kind, parse_bound(a.from_), parse_bound(a.to, end=True), limit=a.limit)
+    result = svc.sessions.search(a.q, a.kind, parse_bound(a.from_), parse_bound(a.to, end=True), limit=a.limit, session_id=a.session_id)
     for entry in result["sessions"]:
         entry["session"]["started_at"] = iso_local(entry["session"]["started_at"])
         for hit in entry["hits"]:

@@ -2565,6 +2565,20 @@
           "title": "Q",
           "type": "string"
         },
+        "session_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only this exact session id. Empty or omitted searches all sessions; an unknown id returns no matches.",
+          "title": "Session Id"
+        },
         "kind": {
           "anyOf": [
             {

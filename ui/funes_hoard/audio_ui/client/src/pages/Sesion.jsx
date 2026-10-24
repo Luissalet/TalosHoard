@@ -82,6 +82,7 @@ export default function Sesion() {
       <a href="#/sesiones" className="btn-link text-[13px]">← Sesiones</a>
       <PageHeader title={<Editable value={session.title} draftRef={titleDraft} onCommit={(v) => save({ title: v }, "Título guardado.")} className="field text-[22px] font-semibold" aria-label="Título" maxLength={200} />}>
         <div className="flex flex-wrap gap-2">
+          <a className="btn" href={`#/buscar?session_id=${encodeURIComponent(id)}&session_title=${encodeURIComponent(session.title)}`}>Buscar en esta sesión</a>
           {isRecordingThis && <button type="button" className="btn btn-primary" onClick={stopRecording}>Parar grabación</button>}
           {session.status === "done" && ["txt", "srt", "md"].map((f) => <a key={f} className="btn" href={api.exportUrl(id, f)} download>{f.toUpperCase()}</a>)}
           {session.status === "failed" && <button type="button" className="btn" onClick={() => act(() => api.retranscribe(id), "Transcripción en cola.")}>Reintentar</button>}
