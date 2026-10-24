@@ -6,6 +6,7 @@ import { Chip, Empty, PageHeader } from "../components/ui.jsx";
 import { KIND_LABEL, KIND_CHIP, when, dayKey } from "../format.js";
 import ClipBundle from "../components/ClipBundle.jsx";
 import ClipReader from "../components/ClipReader.jsx";
+import ClipImage from "../components/ClipImage.jsx";
 
 const KIND_FILTERS = ["", "text", "url", "email", "path", "code", "number", "image"];
 
@@ -32,7 +33,7 @@ function LockIcon() {
   );
 }
 
-function ClipRow({ clip, onCopy, onRead, onPin, onDelete, onLabel, selected, onSelect, selectionFull }) {
+function ClipRow({ clip, onCopy, onRead, onImage, onPin, onDelete, onLabel, selected, onSelect, selectionFull }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(clip.label || "");
   // What the field was loaded with: a reload that changes the label (an assistant edit) only moves an untouched field.
@@ -87,6 +88,7 @@ function ClipRow({ clip, onCopy, onRead, onPin, onDelete, onLabel, selected, onS
         </div>
       </button>
       {clip.kind !== "image" && <button type="button" className="btn btn-sm" onClick={() => onRead(clip.id)} aria-label={`Leer texto de copia ${clip.id}`}>Leer texto</button>}
+      {clip.kind === "image" && <button type="button" className="btn btn-sm" onClick={(event) => onImage(clip.id, event.currentTarget)} aria-label={`Ver imagen de copia ${clip.id}`}>Ver imagen</button>}
       {editing ? (
         <input
           className="field w-40"
@@ -114,6 +116,24 @@ export default function Historial() {
   const [selected, setSelected] = useState([]);
   const [comparisonRevision, setComparisonRevision] = useState(0);
   const [reading, setReading] = useState(null);
+  const [image, setImage] = useState(null);
+  const imageOpener = useRef(null);
+
+  function openImage(id, button) {
+    imageOpener.current = button;
+    setReading(null);
+    setImage(id);
+  }
+
+  function closeImage() {
+    setImage(null);
+    imageOpener.current?.focus();
+  }
+
+  function openText(id) {
+    setImage(null);
+    setReading(id);
+  }
 
   function select(id) {
     setSelected((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
@@ -188,6 +208,7 @@ export default function Historial() {
       </div>
 
       {reading !== null && <ClipReader key={reading} id={reading} onClose={() => setReading(null)} refreshRevision={comparisonRevision} />}
+      {image !== null && <ClipImage key={image} id={image} onClose={closeImage} refreshRevision={comparisonRevision} />}
       <ClipBundle ids={selected} onChange={setSelected} refreshRevision={comparisonRevision} />
 
       {clips.length === 0 ? (
@@ -198,7 +219,7 @@ export default function Historial() {
             <div className="help mb-2">{group.key}</div>
             <div className="panel-white p-0">
               {group.clips.map((clip) => (
-                <ClipRow key={clip.id} clip={clip} onCopy={copy} onRead={setReading} onPin={pin} onDelete={remove} onLabel={label} selected={selected.includes(clip.id)} onSelect={select} selectionFull={selected.length >= 20} />
+                <ClipRow key={clip.id} clip={clip} onCopy={copy} onRead={openText} onImage={openImage} onPin={pin} onDelete={remove} onLabel={label} selected={selected.includes(clip.id)} onSelect={select} selectionFull={selected.length >= 20} />
               ))}
             </div>
           </div>

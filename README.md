@@ -1,5 +1,12 @@
 # Talos's Hoard
 
+Clipboard → History now offers **Ver imagen** to inspect the complete saved PNG
+without copying it to the OS clipboard. Fit and 100% modes retain the full image,
+with local scrolling at original size, dimensions/source/ID and explicit retry.
+Filters, selection and the text reader remain available. It uses the existing
+image and metadata routes; MCP `clip_get` still returns dimensions and OCR text,
+not image pixels or new OCR output.
+
 <img src="app-icon.png" width="96" alt="Talos icon">
 
 Screen memory, clipboard history, desktop activity, audio, service monitoring and disk management in one local process. Incorporates Argus, Echo, Funes, Cassandra and DiskHoard.
