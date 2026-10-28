@@ -1,6 +1,7 @@
 """SEO / GEO watch: the audit's answer, the baseline, the drift between runs, the alerts and the schedule."""
 
 import json
+from pathlib import Path
 
 import pytest
 from conftest import Harness
@@ -62,6 +63,70 @@ def test_a_finding_without_id_is_the_same_by_category_and_title():
     one = normalize_report({"score": 50, "findings": [{"title": "Slow LCP", "category": "cwv", "severity": "high"}]})
     two = normalize_report({"score": 50, "findings": [{"title": "slow  lcp", "category": "CWV", "severity": "high"}]})
     assert compare(one, two)["new"] == [] and compare(one, two)["resolved"] == []
+
+
+# -- the real envelope of Vitruvius's site_audit (schema site-audit/1, a run on a public site, trimmed to the fields of the contract) ---
+
+def real_envelope():
+    return json.loads((Path(__file__).parent / "fixtures" / "site_audit_envelope.json").read_text(encoding="utf-8"))
+
+
+def test_the_real_site_audit_envelope_is_read():
+    envelope = real_envelope()
+    assert envelope["schema"] == "site-audit/1"
+    report = normalize_report(envelope)
+    assert report["score"] == 75.0 == envelope["scores"]["total"]
+    assert report["categories"] == {c: float(envelope["scores"][c]) for c in ("content", "technical", "onpage", "schema", "cwv", "ai", "images")}
+    judged = [f["id"] for f in envelope["findings"] if f["judgement"]]
+    assert judged and report["counts"]["judgement"] == len(judged)
+    assert not set(judged) & {f["id"] for f in report["findings"]}      # a finding that needs a person is not a finding of the drift
+    assert report["findings_total"] == len(envelope["findings"]) - len(judged) and report["counts"]["critical"] == 0
+    assert any("@/" in f["id"] for f in report["findings"])             # the same check on two pages: two ids
+    assert normalize_report(json.dumps(envelope))["score"] == 75.0       # a text answer is parsed too
+    assert compare(report, normalize_report(envelope))["new"] == [] and compare(report, report)["score_delta"] == 0
+
+
+def test_a_category_that_could_not_be_measured_is_not_a_worsening():
+    envelope = real_envelope()
+    before = normalize_report(envelope)
+    for category in envelope["categories"]:
+        if category["id"] == "cwv":
+            category.update(score=None, measured=False)
+    envelope["scores"]["cwv"] = None
+    after = normalize_report(envelope)
+    assert "cwv" in before["categories"] and "cwv" not in after["categories"]
+    assert compare(before, after)["categories"] == {}
+
+
+def test_an_audit_that_answers_ok_false_is_a_failed_run_with_its_own_cause(tmp_path):
+    with pytest.raises(ValueError, match="fetch_failed.*could not be downloaded.*check the address"):
+        normalize_report({"ok": False, "error": "The home page could not be downloaded", "error_kind": "fetch_failed", "hint": "check the address"})
+    h, seo, site, events = make(tmp_path)
+    seo.run(site)
+    refused = {"ok": False, "error": "The home page could not be downloaded", "error_kind": "fetch_failed", "hint": "check the address"}
+    seo.audit_fn = lambda url: {"ok": False, "kind": "tool_error", "error": json.dumps(refused), "data": refused, "status": 200}
+    h.clock.advance(24 * 3600)
+    run = seo.run(site)
+    assert not run["ok"] and run["error_kind"] == "audit_failed" and run["error"].startswith("fetch_failed: The home page could not be downloaded")
+    assert "check the address" in run["error"] and events == []
+    status = seo.status_one(site)
+    assert status["state"] == "unavailable" and status["error_kind"] == "audit_failed" and status["score"] == 80   # the last score stays
+
+
+def test_a_critical_finding_that_needs_a_person_never_raises_an_alert(tmp_path):
+    h, seo, site, events = make(tmp_path)
+    envelope = real_envelope()
+    seo.audit_fn = lambda url: {"ok": True, "kind": "", "error": "", "data": json.loads(json.dumps(envelope)), "status": 200}
+    first = seo.run(site)
+    assert first["baseline"] is True and first["counts"]["judgement"] > 0 and events == []
+    envelope["findings"].append({"id": "content.eeat", "category": "content", "severity": "critical", "title": "E-E-A-T", "judgement": True})
+    h.clock.advance(24 * 3600)
+    second = seo.run(site)
+    assert second["drift"]["new"] == [] and second["drift"]["new_critical"] == [] and events == []
+    envelope["findings"].append({"id": "technical.noindex", "category": "technical", "severity": "critical", "title": "The home page is set to noindex", "judgement": False})
+    h.clock.advance(24 * 3600)
+    third = seo.run(site)
+    assert [f["id"] for f in third["drift"]["new_critical"]] == ["technical.noindex"] and [t for t, _ in events] == [EV_CRITICAL]
 
 
 # -- the list ----------------------------------------------------------------------------------------------------------

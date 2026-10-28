@@ -15,10 +15,14 @@ category and the findings, and compares them with the run before).
   did not have. The very first run is a baseline: nothing is announced. A failed audit (Vitruvius not running, no such
   tool yet) is stored with its cause and retried later; it never raises an alert.
 
-The expected shape of the audit's answer is tolerant: a ``score`` (0-100) or ``scores.total``; ``categories`` as an object
-``{name: score}`` or a list of ``{id|name, score}``; ``findings`` as a list of ``{id, severity, title, category}`` with
-severity ``critical|high|medium|low|info``. A finding is the same finding in two runs when its ``id`` matches (or its
-category and title).
+The audit's answer is the envelope ``site-audit/1`` of Vitruvius (contract in its ``docs/SITE-AUDIT.md``): ``score`` and
+``scores.total`` (0-100), ``categories`` as a list of ``{id, score, measured, findings}`` (a category that could not be measured
+has ``score: null`` and is left out, so it is never read as a worsening), the flat ``findings`` list of
+``{id, category, severity, title, judgement, url?}`` and, when the audit fails, ``{ok: false, error, error_kind, hint}``.
+Findings with ``judgement: true`` need a person to decide: they never score, so they are counted apart and take no part in
+the drift or in the alerts. The reader stays tolerant of other shapes: ``categories`` as an object ``{name: score}``,
+severity words like ``warning``. A finding is the same finding in two runs when its ``id`` matches (a check that fails on
+two pages has two ids), or its category and title when it has none.
 """
 
 from __future__ import annotations
@@ -117,8 +121,12 @@ def finding_key(item: dict[str, Any]) -> str:
 
 
 def normalize_report(data: Any) -> dict[str, Any]:
-    """``{score, categories: {name: score}, findings: [{key, id, severity, title, category}], counts}``; ValueError says what is missing."""
+    """``{score, categories: {name: score}, findings: [{key, id, severity, title, category}], counts}``; ValueError says what is missing
+    or why the audit failed. ``counts`` has a number per severity and ``judgement`` (findings left to a person, not in ``findings``)."""
     raw = _unwrap(data)
+    if raw.get("ok") is False:
+        detail = " ".join(str(raw.get(k)) for k in ("error", "hint") if raw.get(k))
+        raise ValueError(f"the audit failed ({raw.get('error_kind') or 'error'}): {detail or 'no detail'}"[:300])
     scores = raw.get("scores")
     total = _score(raw.get("score"))
     if total is None and isinstance(scores, dict):
@@ -141,8 +149,12 @@ def normalize_report(data: Any) -> dict[str, Any]:
                     categories[name] = score
     findings: list[dict[str, Any]] = []
     seen: set[str] = set()
+    judgement = 0
     for item in raw.get("findings") if isinstance(raw.get("findings"), list) else []:
         if not isinstance(item, dict):
+            continue
+        if item.get("judgement") is True:
+            judgement += 1
             continue
         title = re.sub(r"\s+", " ", str(item.get("title") or item.get("message") or item.get("summary") or "").strip())[:240]
         if not title and not item.get("id"):
@@ -160,6 +172,7 @@ def normalize_report(data: Any) -> dict[str, Any]:
     if total is None:
         raise ValueError("the audit's answer has no score (expected `score`, `scores.total` or `categories`)")
     counts = {sev: sum(1 for f in findings if f["severity"] == sev) for sev in SEVERITIES}
+    counts["judgement"] = judgement
     return {"score": total, "categories": categories, "findings": findings[:MAX_FINDINGS], "counts": counts, "findings_total": len(findings)}
 
 
@@ -358,6 +371,11 @@ class SeoWatcher:
         else:
             kind = str(answer.get("kind") or "tool_error")
             error = _KIND_TEXT.get(kind) or str(answer.get("error") or "the audit failed")[:300]
+            refused = answer.get("data")
+            if kind == "tool_error" and isinstance(refused, dict) and refused.get("ok") is False and refused.get("error_kind"):
+                # the audit answered `ok: false`: its own cause (and hint) is kept; the run is retried later and the last score stays
+                kind = "audit_failed"
+                error = " ".join(str(x) for x in (f"{refused['error_kind']}:", refused.get("error"), refused.get("hint")) if x)[:300]
         if report is None:
             self.db.execute(
                 "INSERT INTO seo_runs(site, ts, ok, error_kind, error, score, categories, findings, counts, baseline, drift, ms) "
