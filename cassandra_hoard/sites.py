@@ -139,7 +139,7 @@ def validate_site(raw: dict[str, Any], existing: Optional[dict[str, Any]] = None
     if len(keyword) > 200:
         raise ValueError("The keyword is limited to 200 characters.")
     host = urlsplit(url).hostname or ""
-    return {
+    site = {
         "id": site_id,
         "name": str(base.get("name") or "").strip()[:120] or host,
         "url": url,
@@ -149,6 +149,20 @@ def validate_site(raw: dict[str, Any], existing: Optional[dict[str, Any]] = None
         "enabled": bool(base.get("enabled", True)),
         "domain": str(base.get("domain") or "").strip().lower().strip(".")[:253],
     }
+    # Optional SEO / GEO audit schedule (seo_watch.py); sites without it keep exactly the entry they always had.
+    for key, low, high, label in (("seo_interval_h", 1.0, 720.0, "hours between SEO/GEO audits"),
+                                  ("seo_drop_points", 0.5, 100.0, "score points that count as a drop")):
+        raw_value = base.get(key)
+        if raw_value in (None, "", 0, 0.0, False):
+            continue
+        try:
+            number = float(raw_value)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"{key} must be a number ({label}).") from error
+        if not low <= number <= high:
+            raise ValueError(f"{key} must be between {low:g} and {high:g} ({label}); 0 turns the audit off.")
+        site[key] = number
+    return site
 
 
 # ---------------------------------------------------------------------------
@@ -627,7 +641,7 @@ class SiteWatcher:
             warnings.append(f"domain expires in {domain['days_left']} day(s)")
         change = st.get("last_change")
         open_incident = self.incidents.open_for(SITE_PREFIX + site["id"]) if enabled else None
-        return {
+        out = {
             "id": site["id"], "name": site["name"], "url": site["url"], "enabled": enabled, "interval_min": site["interval_min"],
             "expect_status": site["expect_status"], "keyword": site["keyword"] or None, "domain_override": site["domain"] or None,
             "state": state, "since": st["since"], "since_iso": iso(st["since"]) if st["since"] else None,
@@ -642,6 +656,10 @@ class SiteWatcher:
             "last_change": ({"at": iso(change["at"]), "from": change["from"], "to": change["to"], "cause": change.get("cause")} if change else None),
             "open_incident": open_incident["id"] if open_incident else None, "warnings": warnings,
         }
+        for key in ("seo_interval_h", "seo_drop_points"):  # only for sites that opted in to the SEO/GEO audit (seo_watch.py)
+            if site.get(key):
+                out[key] = site[key]
+        return out
 
     def status_all(self, now: Optional[float] = None) -> list[dict[str, Any]]:
         now = self.clock() if now is None else now

@@ -1,5 +1,25 @@
 # Talos's Hoard
 
+**Services: scheduled SEO/GEO watch of the public websites.** A site in the **Webs públicas**
+list opts in with `seo_interval_h` (hours between audits, 1 to 720; edit it in the list editor,
+with `sites_watch` or `POST /services/api/sites`). Each audit is one call of the design
+Hoard's `site_audit` tool through the hub; Services reads its score, the score per category and
+its findings and keeps every run (a failed one stores its cause and is retried an hour later).
+The first successful audit is the **baseline**; every later run is compared with the one before
+(score change, categories that moved, findings that appeared or were resolved) and with the
+baseline (`sites_seo_baseline` or **Aceptar como referencia** moves it after a fix). Alerts on the
+family bus: `cassandra.site.seo_drop` when the score is at least `seo_drop_points` (default 2) below
+the best of the last seven runs and below the run before, and `cassandra.site.seo_critical` when a
+critical finding appears that the run before did not have; the first run announces nothing, and
+the Boop notification carries no site name, score or finding text. MCP: `sites_seo` (state, drift,
+critical findings, with `history` the latest runs), `sites_seo_run` (audit now) and
+`sites_seo_baseline`; HTTP `GET /services/api/sites/seo`, `GET /services/api/sites/{id}/seo`,
+`POST /services/api/sites/seo/run` and `POST /services/api/sites/{id}/seo/baseline`. The Panel's site
+card shows score and change beside each site and a **SEO y GEO** block in its detail. The audit tool
+belongs to Vitruvius (task 1704); until it offers `site_audit`, audits are stored as failed with
+the reason "Vitruvius does not offer the audit yet" and nothing else changes. `CASSANDRA_SEO=0`
+switches the watch off. The catalog is now **104 tools** (three new for this watch, four for audio).
+
 **Audio: echo clean-up, meeting chapters and a transcription bench.** With speakers
 on, the microphone hears the other side again and the final pass used to write the
 same sentence twice, the second copy as "yo". After transcribing, the microphone
@@ -24,8 +44,8 @@ clean-up and stores the result in `<audio data>/bench-results.json`. Measured wi
 faster-whisper small on CPU int8: call 90 % of words found, 100 % correct side, 0 leaked,
 0 invented; call with speaker echo 90 % found, 100 % correct side, 0 leaked (23 echo lines
 removed; without clean-up 18 leaked and 46 lines instead of 20); music 99 %; silence 0
-lines. The catalog is now **101 tools** (four new: `scribe_chapters`, `scribe_echo_check`,
-`scribe_bench`, `scribe_bench_status`). The fixtures are third-party recordings released
+lines. Four new audio tools: `scribe_chapters`, `scribe_echo_check`,
+`scribe_bench`, `scribe_bench_status`. The fixtures are third-party recordings released
 as CC0 and the method follows an MIT-licensed project; see
 `funes_hoard/audio_memory/NOTICE-meeting-recorder.md`.
 
@@ -87,7 +107,7 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 | Clipboard | Text and image history, type detection, OCR, search, favourites, edit/delete/restore, copy and bundles |
 | Activity | Foreground windows, idle/lock handling, recent files, Git commits, projects, classifications, privacy rules, summaries, exports and cross-module recall |
 | Audio | Microphone/system recording, file import, streaming transcripts, echo clean-up between tracks, search, notes, tags, exports, minutes, meeting chapters, transcription bench, shared speech-to-text and GPU/CPU fallback |
-| Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, notifications and restart policies |
+| Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, scheduled SEO/GEO audits with baseline and drift, notifications and restart policies |
 | Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, ZIP splitting and model-backup management |
 
 The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`. The shared Hoard theme, product icon and Faustus copilot apply throughout. Capture backends and operating-system integrations retain their original platform requirements.
@@ -156,7 +176,7 @@ On activation, the native engine resumes its normal behaviour, including its sav
 
 ## API and MCP
 
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 101 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, and four audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
+`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 104 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, four audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`) and three SEO/GEO watch tools (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`). `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
 
 Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
 

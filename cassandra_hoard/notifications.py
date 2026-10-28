@@ -50,6 +50,8 @@ class BoopNotifier:
             return self._post(self._waiting_payload(data))
         if type_ in ("cassandra.site.cert_expiring", "cassandra.site.domain_expiring"):
             return self._post(self._expiry_payload(type_, data))
+        if type_ in ("cassandra.site.seo_drop", "cassandra.site.seo_critical"):
+            return self._post(self._seo_payload(type_, data))
         if type_ not in ("cassandra.incident.opened", "cassandra.incident.closed"):
             return False
         iid = data.get("incident_id")
@@ -93,6 +95,29 @@ class BoopNotifier:
             "external_id": f"{fingerprint}:{threshold}",
             "fingerprint": fingerprint,
             "actions": [{"label": "Open Cassandra", "url": f"{self._public_url}/#/"}],
+        }
+
+    def _seo_payload(self, type_: str, data: dict) -> Optional[dict]:
+        """A public site's SEO/GEO audit got worse. No site name, url, score or finding text is forwarded."""
+        site = str(data.get("site") or "")
+        if not site:
+            return None
+        drop = type_.endswith("seo_drop")
+        digest = hashlib.sha256(site.encode("utf-8")).hexdigest()[:12]
+        kind = "seo_drop" if drop else "seo_critical"
+        fingerprint = f"cassandra:site:{digest}:{kind}"
+        try:
+            score = int(round(float(data.get("score"))))
+        except (TypeError, ValueError):
+            score = 0
+        return {
+            "title": "Cassandra: a public site's SEO/GEO " + ("score dropped" if drop else "audit found a critical issue"),
+            "body": "Open Cassandra for details.",
+            "level": "warning",
+            "source": "cassandra",
+            "external_id": f"{fingerprint}:{score}",
+            "fingerprint": fingerprint,
+            "actions": [{"label": "Open Cassandra", "url": f"{self._public_url}/#/sites"}],
         }
 
     def _waiting_payload(self, data: dict) -> Optional[dict]:

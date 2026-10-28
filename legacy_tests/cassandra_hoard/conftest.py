@@ -111,6 +111,32 @@ class FakeSiteNet:
         self.http = {**self.http, "status": status, "latency_ms": latency, "body": body, "redirect": redirect, "error": None}
 
 
+class FakeAudit:
+    """The SEO/GEO auditor (Vitruvius's site_audit through the hub): the answer is set by hand, every call is recorded."""
+
+    def __init__(self):
+        self.report = {"score": 80, "categories": {"technical": 85, "structured_data": 70, "ai_crawlers": 90},
+                       "findings": [{"id": "meta-description", "severity": "medium", "title": "Missing meta description", "category": "technical"},
+                                    {"id": "alt-text", "severity": "low", "title": "Images without alt text", "category": "technical"}]}
+        self.failure: tuple[str, str] | None = None
+        self.calls: list[str] = []
+
+    def audit_fn(self, url):
+        self.calls.append(url)
+        if self.failure:
+            kind, text = self.failure
+            return {"ok": False, "kind": kind, "error": text, "data": None}
+        return {"ok": True, "kind": "", "error": "", "data": json.loads(json.dumps(self.report)), "status": 200}
+
+    def set(self, score=None, findings=None, categories=None):
+        if score is not None:
+            self.report["score"] = score
+        if findings is not None:
+            self.report["findings"] = findings
+        if categories is not None:
+            self.report["categories"] = categories
+
+
 class FakeGpu:
     def __init__(self):
         self.samples = [GpuSample(0, 2000, 24000, 5.0), GpuSample(1, 1000, 12000, 0.0)]
@@ -154,6 +180,7 @@ class Harness:
         self.clock = FakeClock()
         self.gpu = FakeGpu()
         self.sitenet = FakeSiteNet()
+        self.audit = FakeAudit()
         self.alive: dict[int, bool] = {}
         self.boot = T0 - 3600
         self.spawned: list[tuple] = []
@@ -185,6 +212,8 @@ class Harness:
             # hermetic: the public-site checks (and RDAP) never touch the real network
             sites_kwargs=dict(http_fn=self.sitenet.http_fn, tls_fn=self.sitenet.tls_fn, dns_fn=self.sitenet.dns_fn,
                               rdap_client=httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(599)))),
+            # hermetic: the SEO/GEO audit never calls the hub
+            seo_kwargs=dict(audit_fn=self.audit.audit_fn),
         )
 
     def stop_process(self, pid, started=None):

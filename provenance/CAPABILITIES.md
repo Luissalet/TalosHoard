@@ -44,6 +44,9 @@ Source tool definitions and implementations are incorporated in this repository.
 | services | faustus_farm | faustus_farm |
 | services | sites_status | sites_status |
 | services | site_history | site_history |
+| services | sites_seo | sites_seo |
+| services | sites_seo_run | sites_seo_run |
+| services | sites_seo_baseline | sites_seo_baseline |
 | services | svc_restart | svc_restart |
 | services | svc_watch | svc_watch |
 | services | sites_watch | sites_watch |
