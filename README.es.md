@@ -17,9 +17,12 @@ deriva, hallazgos críticos y, con `history`, las últimas ejecuciones), `sites_
 ahora) y `sites_seo_baseline`; HTTP `GET /services/api/sites/seo`, `GET /services/api/sites/{id}/seo`,
 `POST /services/api/sites/seo/run` y `POST /services/api/sites/{id}/seo/baseline`. La tarjeta de
 webs del Panel muestra puntuación y cambio junto a cada web y un bloque **SEO y GEO** en su detalle.
-La herramienta de auditoría es de Vitruvius (tarea 1704): mientras no ofrezca `site_audit`, las
-auditorías quedan guardadas como fallidas con el motivo «Vitruvius aún no ofrece la auditoría» y
-nada más cambia. `CASSANDRA_SEO=0` apaga la vigilancia. El catálogo pasa a **104 herramientas**
+La herramienta de auditoría es de Vitruvius y su sobre `site-audit/1` está verificado en vivo
+contra una web pública real: las categorías que no se pudieron medir (`score: null`) nunca se
+leen como un empeoramiento, los hallazgos que requieren criterio de una persona se cuentan aparte
+(`counts.judgement`) y nunca disparan un aviso, y una auditoría que responde `ok: false` se guarda
+como fallida con su propia causa y pista. Si Vitruvius está caído o su módulo de diseño apagado,
+la ejecución queda guardada como fallida con ese motivo y nada más cambia. `CASSANDRA_SEO=0` apaga la vigilancia. El catálogo pasa a **104 herramientas**
 (tres nuevas para esta vigilancia, cuatro para audio).
 
 **Audio: limpieza de eco, capítulos de reunión y banco de transcripción.** Con altavoces,

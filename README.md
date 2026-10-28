@@ -16,8 +16,12 @@ critical findings, with `history` the latest runs), `sites_seo_run` (audit now) 
 `sites_seo_baseline`; HTTP `GET /services/api/sites/seo`, `GET /services/api/sites/{id}/seo`,
 `POST /services/api/sites/seo/run` and `POST /services/api/sites/{id}/seo/baseline`. The Panel's site
 card shows score and change beside each site and a **SEO y GEO** block in its detail. The audit tool
-belongs to Vitruvius (task 1704); until it offers `site_audit`, audits are stored as failed with
-the reason "Vitruvius does not offer the audit yet" and nothing else changes. `CASSANDRA_SEO=0`
+belongs to Vitruvius and its `site-audit/1` envelope is verified live against a real public site:
+categories that could not be measured (`score: null`) are never read as a worsening, findings
+that need a person's judgement are counted apart (`counts.judgement`) and never raise an alert,
+and an audit that answers `ok: false` is stored as failed with its own cause and hint. If
+Vitruvius is down or the design module is off, the run is stored as failed with that reason and
+nothing else changes. `CASSANDRA_SEO=0`
 switches the watch off. The catalog is now **104 tools** (three new for this watch, four for audio).
 
 **Audio: echo clean-up, meeting chapters and a transcription bench.** With speakers

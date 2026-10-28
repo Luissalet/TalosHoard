@@ -1,0 +1,649 @@
+{
+ "schema": "site-audit/1",
+ "ok": true,
+ "url": "https://luissalet.github.io/Portfolio/",
+ "final_url": "https://luissalet.github.io/Portfolio/",
+ "audited_at": "2026-10-28T22:56:09Z",
+ "duration_s": 25.9,
+ "id": "20261028-225609-01-e688c1d7",
+ "from_cache": false,
+ "fixed_at": null,
+ "score": 75,
+ "scores": {
+  "content": 96,
+  "technical": 34,
+  "onpage": 72,
+  "schema": 90,
+  "cwv": 86,
+  "ai": 80,
+  "images": 100,
+  "total": 75
+ },
+ "summary": {
+  "score": 75,
+  "pages_audited": 2,
+  "requests": 32,
+  "counts": {
+   "critical": 0,
+   "high": 1,
+   "medium": 7,
+   "low": 13,
+   "info": 3
+  },
+  "findings_total": 30,
+  "judgement_total": 6,
+  "categories_measured": [
+   "content",
+   "technical",
+   "onpage",
+   "schema",
+   "cwv",
+   "ai",
+   "images"
+  ],
+  "categories_unmeasured": [],
+  "truncated": false,
+  "links_checked": {
+   "internal": 0,
+   "external": 15,
+   "broken": 1
+  }
+ },
+ "categories": [
+  {
+   "id": "content",
+   "name": "Contenido",
+   "weight": 23,
+   "score": 96,
+   "measured": true,
+   "findings": [
+    {
+     "id": "content.long-sentences@/Portfolio/",
+     "severity": "low",
+     "title": "Frases largas: 33 palabras de media",
+     "description": "Las frases muy largas cuestan de leer y de extraer como respuesta.",
+     "recommendation": "Divide las frases por encima de 25 palabras.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/",
+     "evidence": {
+      "avg_words": 33.1
+     }
+    },
+    {
+     "id": "content.eeat",
+     "severity": "info",
+     "title": "Experiencia, autoridad y confianza (E-E-A-T)",
+     "description": "Una medición no puede decidir si la autoría es creíble ni si el contenido refleja experiencia real.",
+     "recommendation": "Revisa: autor identificable, credenciales, fuentes citadas, datos de contacto y una página «Acerca de».",
+     "judgement": true
+    },
+    {
+     "id": "content.intent",
+     "severity": "info",
+     "title": "Encaje con la intención de búsqueda",
+     "description": "Que el contenido responda a lo que busca la persona requiere criterio humano.",
+     "recommendation": "Para cada página principal, escribe la pregunta que resuelve y comprueba que el primer párrafo la contesta.",
+     "judgement": true
+    },
+    {
+     "id": "content.originality",
+     "severity": "info",
+     "title": "Originalidad y profundidad",
+     "description": "Una medición no distingue texto original de texto genérico.",
+     "recommendation": "Comprueba que cada página aporta datos, ejemplos o criterio propios.",
+     "judgement": true
+    }
+   ]
+  },
+  {
+   "id": "technical",
+   "name": "SEO técnico",
+   "weight": 22,
+   "score": 34,
+   "measured": true,
+   "findings": [
+    {
+     "id": "technical.broken-external@/Portfolio/",
+     "severity": "medium",
+     "title": "Enlace externo roto: 404",
+     "description": "https://github.com/Luissalet/WatchHoard",
+     "recommendation": "Corrige o elimina el enlace.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/",
+     "evidence": {
+      "target": "https://github.com/Luissalet/WatchHoard",
+      "status": 404
+     }
+    },
+    {
+     "id": "technical.canonical-missing@/ExamCoach/",
+     "severity": "medium",
+     "title": "Falta la dirección canónica",
+     "description": "No hay <link rel=\"canonical\">.",
+     "recommendation": "Declara la URL canónica absoluta de la página.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "technical.canonical-missing@/Portfolio/",
+     "severity": "medium",
+     "title": "Falta la dirección canónica",
+     "description": "No hay <link rel=\"canonical\">.",
+     "recommendation": "Declara la URL canónica absoluta de la página.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "technical.header-content-security-policy@/Portfolio/",
+     "severity": "medium",
+     "title": "Falta la cabecera content-security-policy",
+     "description": "Sin política de contenido no se limita qué scripts pueden ejecutarse.",
+     "recommendation": "Configura `content-security-policy` en el servidor o en la capa de CDN. Un alojamiento estático puro no permite cabeceras propias.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "technical.sitemap-missing",
+     "severity": "medium",
+     "title": "No se encuentra el mapa del sitio",
+     "description": "Se probó https://luissalet.github.io/sitemap.xml.",
+     "recommendation": "Genera un sitemap.xml con las páginas indexables y decláralo en robots.txt.",
+     "judgement": false
+    },
+    {
+     "id": "technical.header-frame@/Portfolio/",
+     "severity": "low",
+     "title": "Nada impide incrustar el sitio en otro (clickjacking)",
+     "description": "No hay X-Frame-Options ni `frame-ancestors`.",
+     "recommendation": "Añade `X-Frame-Options: SAMEORIGIN` o `frame-ancestors 'self'`.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "technical.header-referrer-policy@/Portfolio/",
+     "severity": "low",
+     "title": "Falta la cabecera referrer-policy",
+     "description": "Sin política de referencia se envía la URL completa a otros sitios.",
+     "recommendation": "Configura `referrer-policy` en el servidor o en la capa de CDN. Un alojamiento estático puro no permite cabeceras propias.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "technical.header-x-content-type-options@/Portfolio/",
+     "severity": "low",
+     "title": "Falta la cabecera x-content-type-options",
+     "description": "Sin `nosniff` el navegador puede reinterpretar el tipo de los archivos.",
+     "recommendation": "Configura `x-content-type-options` en el servidor o en la capa de CDN. Un alojamiento estático puro no permite cabeceras propias.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "technical.robots-missing",
+     "severity": "low",
+     "title": "No hay robots.txt",
+     "description": "https://luissalet.github.io/robots.txt devuelve 404.",
+     "recommendation": "Publica un robots.txt, aunque solo declare el mapa del sitio.",
+     "judgement": false
+    },
+    {
+     "id": "technical.header-permissions-policy@/Portfolio/",
+     "severity": "info",
+     "title": "Falta la cabecera permissions-policy",
+     "description": "Sin política de permisos las funciones del navegador quedan por defecto.",
+     "recommendation": "Configura `permissions-policy` en el servidor o en la capa de CDN. Un alojamiento estático puro no permite cabeceras propias.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    }
+   ]
+  },
+  {
+   "id": "onpage",
+   "name": "SEO en página",
+   "weight": 20,
+   "score": 72,
+   "measured": true,
+   "findings": [
+    {
+     "id": "onpage.description-length@/ExamCoach/",
+     "severity": "low",
+     "title": "La meta descripción mide 63 caracteres",
+     "description": "Aplicación colaborativa de estudio para exámenes universitarios",
+     "recommendation": "Mantén la descripción entre 70 y 160 caracteres.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "onpage.description-length@/Portfolio/",
+     "severity": "low",
+     "title": "La meta descripción mide 167 caracteres",
+     "description": "Luis Salete — AI & Machine Learning Engineer and Software Engineer. Production machine learning on AWS, LLM integration ",
+     "recommendation": "Mantén la descripción entre 70 y 160 caracteres.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "onpage.social-og@/ExamCoach/",
+     "severity": "low",
+     "title": "Faltan etiquetas Open Graph: og:title, og:description, og:image",
+     "description": "Los enlaces compartidos mostrarán una vista previa pobre.",
+     "recommendation": "Añade las etiquetas Open Graph que falten.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "onpage.social-og@/Portfolio/",
+     "severity": "low",
+     "title": "Faltan etiquetas Open Graph: og:title, og:description, og:image",
+     "description": "Los enlaces compartidos mostrarán una vista previa pobre.",
+     "recommendation": "Añade las etiquetas Open Graph que falten.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "onpage.title-length@/ExamCoach/",
+     "severity": "low",
+     "title": "El título mide 9 caracteres",
+     "description": "ExamCoach",
+     "recommendation": "Mantén el título entre 30 y 60 caracteres para que no se corte.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "onpage.url-shape@/ExamCoach/",
+     "severity": "low",
+     "title": "La dirección es larga o poco limpia",
+     "description": "https://luissalet.github.io/ExamCoach/",
+     "recommendation": "Usa direcciones cortas, en minúsculas y con guiones.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "onpage.url-shape@/Portfolio/",
+     "severity": "low",
+     "title": "La dirección es larga o poco limpia",
+     "description": "https://luissalet.github.io/Portfolio/",
+     "recommendation": "Usa direcciones cortas, en minúsculas y con guiones.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    },
+    {
+     "id": "onpage.social-twitter@/ExamCoach/",
+     "severity": "info",
+     "title": "Falta twitter:card",
+     "description": "Sin ella algunas redes usan una vista previa genérica.",
+     "recommendation": "Añade `<meta name=\"twitter:card\" content=\"summary_large_image\">`.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "onpage.social-twitter@/Portfolio/",
+     "severity": "info",
+     "title": "Falta twitter:card",
+     "description": "Sin ella algunas redes usan una vista previa genérica.",
+     "recommendation": "Añade `<meta name=\"twitter:card\" content=\"summary_large_image\">`.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/"
+    }
+   ]
+  },
+  {
+   "id": "schema",
+   "name": "Datos estructurados",
+   "weight": 10,
+   "score": 90,
+   "measured": true,
+   "findings": [
+    {
+     "id": "schema.none@/Portfolio/",
+     "severity": "medium",
+     "title": "La portada no tiene datos estructurados",
+     "description": "No hay bloques JSON-LD.",
+     "recommendation": "Añade al menos Organization o Person y WebSite con `sameAs`.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/",
+     "evidence": {
+      "microdata": false
+     }
+    }
+   ]
+  },
+  {
+   "id": "cwv",
+   "name": "Rendimiento (Core Web Vitals)",
+   "weight": 10,
+   "score": 86,
+   "measured": true,
+   "findings": [
+    {
+     "id": "cwv.lcp@/Portfolio/",
+     "severity": "medium",
+     "title": "LCP 2812 ms: mejorable",
+     "description": "Umbral bueno 2500 ms, malo por encima de 4000 ms. Medida de laboratorio (móvil con CPU 4× más lenta y red 4G lenta).",
+     "recommendation": "Optimiza el elemento más grande de la primera pantalla: comprime la imagen, precárgala y evita recursos que bloqueen el pintado.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/",
+     "evidence": {
+      "value": 2812,
+      "good": 2500,
+      "poor": 4000
+     }
+    },
+    {
+     "id": "cwv.fcp@/Portfolio/",
+     "severity": "low",
+     "title": "FCP 2812 ms: mejorable",
+     "description": "Umbral bueno 1800 ms, malo por encima de 3000 ms. Medida de laboratorio (móvil con CPU 4× más lenta y red 4G lenta).",
+     "recommendation": "Reduce CSS y JavaScript que bloquean el pintado y sirve el HTML cuanto antes.",
+     "judgement": false,
+     "url": "https://luissalet.github.io/Portfolio/",
+     "evidence": {
+      "value": 2812,
+      "good": 1800,
+      "poor": 3000
+     }
+    }
+   ]
+  },
+  {
+   "id": "ai",
+   "name": "Visibilidad en IA (GEO)",
+   "weight": 10,
+   "score": 80,
+   "measured": true,
+   "findings": [
+    {
+     "id": "ai.js-dependent",
+     "severity": "high",
+     "title": "El contenido principal solo aparece al ejecutar JavaScript",
+     "description": "El HTML inicial trae 0 palabras y la página renderizada 15640 caracteres.",
+     "recommendation": "Entrega el contenido en el HTML (renderizado en servidor o estático): muchos rastreadores de IA no ejecutan scripts.",
+     "judgement": false,
+     "evidence": {
+      "raw_words": 0,
+      "rendered_chars": 15640
+     }
+    },
+    {
+     "id": "ai.js-dependent@/ExamCoach/",
+     "severity": "medium",
+     "title": "La página se pinta con JavaScript y no se pudo juzgar su contenido",
+     "description": "El HTML inicial trae 0 palabras; solo la portada se carga en un navegador.",
+     "recommendation": "Comprueba que el texto principal esté en el HTML inicial o que se renderice en servidor.",
+     "judgement": true,
+     "url": "https://luissalet.github.io/ExamCoach/"
+    },
+    {
+     "id": "ai.citability",
+     "severity": "info",
+     "title": "Revisa si el texto responde con frases citables",
+     "description": "0 encabezados en forma de pregunta, 0 listas o tablas, 0 palabras.",
+     "recommendation": "Abre cada sección con una respuesta directa de 40 a 60 palabras y respáldala con datos y fuentes.",
+     "judgement": true
+    },
+    {
+     "id": "ai.llms-missing",
+     "severity": "info",
+     "title": "No hay llms.txt",
+     "description": "Es una propuesta sin respaldo de los buscadores; su efecto en citas no está demostrado.",
+     "recommendation": "Valora publicarlo como resumen del sitio para agentes.",
+     "judgement": true
+    }
+   ]
+  },
+  {
+   "id": "images",
+   "name": "Imágenes",
+   "weight": 5,
+   "score": 100,
+   "measured": true,
+   "findings": []
+  }
+ ],
+ "findings": [
+  {
+   "id": "ai.js-dependent",
+   "category": "ai",
+   "severity": "high",
+   "title": "El contenido principal solo aparece al ejecutar JavaScript",
+   "judgement": false
+  },
+  {
+   "id": "ai.js-dependent@/ExamCoach/",
+   "category": "ai",
+   "severity": "medium",
+   "title": "La página se pinta con JavaScript y no se pudo juzgar su contenido",
+   "judgement": true,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "cwv.lcp@/Portfolio/",
+   "category": "cwv",
+   "severity": "medium",
+   "title": "LCP 2812 ms: mejorable",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "schema.none@/Portfolio/",
+   "category": "schema",
+   "severity": "medium",
+   "title": "La portada no tiene datos estructurados",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.broken-external@/Portfolio/",
+   "category": "technical",
+   "severity": "medium",
+   "title": "Enlace externo roto: 404",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.canonical-missing@/ExamCoach/",
+   "category": "technical",
+   "severity": "medium",
+   "title": "Falta la dirección canónica",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "technical.canonical-missing@/Portfolio/",
+   "category": "technical",
+   "severity": "medium",
+   "title": "Falta la dirección canónica",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.header-content-security-policy@/Portfolio/",
+   "category": "technical",
+   "severity": "medium",
+   "title": "Falta la cabecera content-security-policy",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.sitemap-missing",
+   "category": "technical",
+   "severity": "medium",
+   "title": "No se encuentra el mapa del sitio",
+   "judgement": false
+  },
+  {
+   "id": "content.long-sentences@/Portfolio/",
+   "category": "content",
+   "severity": "low",
+   "title": "Frases largas: 33 palabras de media",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "cwv.fcp@/Portfolio/",
+   "category": "cwv",
+   "severity": "low",
+   "title": "FCP 2812 ms: mejorable",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "onpage.description-length@/ExamCoach/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "La meta descripción mide 63 caracteres",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "onpage.description-length@/Portfolio/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "La meta descripción mide 167 caracteres",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "onpage.social-og@/ExamCoach/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "Faltan etiquetas Open Graph: og:title, og:description, og:image",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "onpage.social-og@/Portfolio/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "Faltan etiquetas Open Graph: og:title, og:description, og:image",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "onpage.title-length@/ExamCoach/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "El título mide 9 caracteres",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "onpage.url-shape@/ExamCoach/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "La dirección es larga o poco limpia",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "onpage.url-shape@/Portfolio/",
+   "category": "onpage",
+   "severity": "low",
+   "title": "La dirección es larga o poco limpia",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.header-frame@/Portfolio/",
+   "category": "technical",
+   "severity": "low",
+   "title": "Nada impide incrustar el sitio en otro (clickjacking)",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.header-referrer-policy@/Portfolio/",
+   "category": "technical",
+   "severity": "low",
+   "title": "Falta la cabecera referrer-policy",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.header-x-content-type-options@/Portfolio/",
+   "category": "technical",
+   "severity": "low",
+   "title": "Falta la cabecera x-content-type-options",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.robots-missing",
+   "category": "technical",
+   "severity": "low",
+   "title": "No hay robots.txt",
+   "judgement": false
+  },
+  {
+   "id": "ai.citability",
+   "category": "ai",
+   "severity": "info",
+   "title": "Revisa si el texto responde con frases citables",
+   "judgement": true
+  },
+  {
+   "id": "ai.llms-missing",
+   "category": "ai",
+   "severity": "info",
+   "title": "No hay llms.txt",
+   "judgement": true
+  },
+  {
+   "id": "content.eeat",
+   "category": "content",
+   "severity": "info",
+   "title": "Experiencia, autoridad y confianza (E-E-A-T)",
+   "judgement": true
+  },
+  {
+   "id": "content.intent",
+   "category": "content",
+   "severity": "info",
+   "title": "Encaje con la intención de búsqueda",
+   "judgement": true
+  },
+  {
+   "id": "content.originality",
+   "category": "content",
+   "severity": "info",
+   "title": "Originalidad y profundidad",
+   "judgement": true
+  },
+  {
+   "id": "onpage.social-twitter@/ExamCoach/",
+   "category": "onpage",
+   "severity": "info",
+   "title": "Falta twitter:card",
+   "judgement": false,
+   "url": "https://luissalet.github.io/ExamCoach/"
+  },
+  {
+   "id": "onpage.social-twitter@/Portfolio/",
+   "category": "onpage",
+   "severity": "info",
+   "title": "Falta twitter:card",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  },
+  {
+   "id": "technical.header-permissions-policy@/Portfolio/",
+   "category": "technical",
+   "severity": "info",
+   "title": "Falta la cabecera permissions-policy",
+   "judgement": false,
+   "url": "https://luissalet.github.io/Portfolio/"
+  }
+ ],
+ "previous": {
+  "id": "20261028-225543-01-e688c1d7",
+  "audited_at": "2026-10-28T22:55:43Z",
+  "score": 75,
+  "new": [],
+  "fixed": [],
+  "persisting": 24
+ },
+ "limits": [
+  "El HTML inicial está casi vacío: las comprobaciones de página se hicieron sobre el DOM renderizado; ver `ai.js-dependent` para quien no ejecuta scripts.",
+  "Contenido, E-E-A-T e intención de búsqueda se marcan como juicio y no puntúan.",
+  "Las métricas de rendimiento son de laboratorio (un navegador, una carga), no datos de usuarios reales."
+ ]
+}
