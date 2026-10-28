@@ -168,6 +168,6 @@ def test_before_lunch_is_no_longer_advertised_in_the_mcp_tool_keywords():
     # deliberately not imported by anything else -- read its source instead.
     from pathlib import Path
 
-    source = (Path(__file__).resolve().parent.parent / "funes_hoard" / "mcp_server.py").read_text(encoding="utf-8")
+    source = (Path(__file__).resolve().parents[2] / "funes_hoard" / "mcp_server.py").read_text(encoding="utf-8")
     assert "before lunch" not in source
     assert "antes de comer" not in source

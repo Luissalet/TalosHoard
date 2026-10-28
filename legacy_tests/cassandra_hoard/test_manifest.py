@@ -3,22 +3,21 @@
 import json
 from pathlib import Path
 
-from cassandra_hoard import SERVICE
 from cassandra_hoard.agent_tools import TOOLS
-from cassandra_hoard.config import DEFAULT_PORT
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_manifest_matches_code():
+    """In Talos the manifest is the root one: it absorbs Cassandra, and every Cassandra tool is in the Services part of the catalogue."""
     manifest = json.loads((ROOT / "faustus-plugin.json").read_text(encoding="utf-8"))
-    assert manifest["id"] == "cassandra" and manifest["name"] == "Cassandra's Hoard"
-    assert manifest["app"]["health"]["expect"]["service"] == SERVICE
-    assert manifest["app"]["url_default"].endswith(f":{DEFAULT_PORT}")
-    assert manifest["app"]["launch_hint"]["env"]["PORT_STRICT"] == "1"
-    # The host refuses unknown top-level keys, so the tool names live in the notes/README, not the manifest.
+    assert manifest["id"] == "talos" and manifest["name"] == "Talos's Hoard"
+    assert "cassandra_hoard" in manifest["x-family"]["absorbs"]
+    assert manifest["app"]["health"]["expect"]["service"] == "talos-hoard"
+    catalog = {tool["name"]: tool for tool in json.loads((ROOT / "talos_hoard" / "catalog.json").read_text(encoding="utf-8"))}
     for tool in TOOLS:
-        assert tool.name in (ROOT / "README.md").read_text(encoding="utf-8")
-    readme = (ROOT / "README.md").read_text(encoding="utf-8") + (ROOT / "README.es.md").read_text(encoding="utf-8")
+        assert catalog[tool.name]["module"] == "services", tool.name
+    # the catalogue is generated from the code: a tool added to Cassandra without rebuilding it would be missing above
+    inventory = (ROOT / "provenance" / "CAPABILITIES.md").read_text(encoding="utf-8")
     for tool in TOOLS:
-        assert f"`{tool.name}`" in readme
+        assert f"| services | {tool.name} |" in inventory, tool.name

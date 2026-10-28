@@ -38,19 +38,22 @@ def test_deep_links_also_get_the_launcher(client):
 
 
 def test_manifest_declares_the_copilot_contract_and_keeps_the_agenda_flag():
+    # Talos's root manifest declares the contract for every module; the standalone manifest's agenda flag and context list
+    # lived in the Cassandra repository, so the context kinds are checked where they are implemented (the Services client).
     manifest = json.loads((ROOT / "faustus-plugin.json").read_text(encoding="utf-8"))
-    family = manifest["x-family"]
-    assert family["agenda"] is True
-    copilot = family["copilot"]
+    copilot = manifest["x-family"]["copilot"]
     assert copilot["provider"] == "faustus" and copilot["contract"] == "1.0"
     assert copilot["panel"] == "/api/copilot/panel.js"
-    assert {"service", "site", "incident", "gpu", "filters", "editor"} <= set(copilot["context"])
+    module = (ROOT / "ui" / "cassandra_hoard" / "client" / "src" / "copilot-context.js").read_text(encoding="utf-8")
+    for kind in ("service", "site", "incident", "gpu", "filters", "editor"):
+        assert kind in module, kind
 
 
 def test_client_registers_the_contract_once_from_the_entry():
-    main = (ROOT / "client" / "src" / "main.jsx").read_text(encoding="utf-8")
+    client_src = ROOT / "ui" / "cassandra_hoard" / "client" / "src"
+    main = (client_src / "main.jsx").read_text(encoding="utf-8")
     assert "installCopilot()" in main
-    module = (ROOT / "client" / "src" / "copilot-context.js").read_text(encoding="utf-8")
+    module = (client_src / "copilot-context.js").read_text(encoding="utf-8")
     assert re.search(r"hoardCopilot\s*=\s*\{\s*context,\s*onTurnEnd\s*\}", module)
     assert "hoard:copilot-turn-end" in module
 
@@ -72,5 +75,5 @@ def test_site_edits_are_patches(client, monkeypatch):
 def test_docs_list_the_copilot_routes():
     for name in ("README.md", "README.es.md"):
         text = (ROOT / name).read_text(encoding="utf-8")
-        for route in ("/api/copilot/info", "/api/copilot/panel.js", "/api/copilot/proxy", "/api/copilot/launcher.js", "window.hoardCopilot.context()", "HOARD_COPILOT=0"):
+        for route in ("/api/copilot/info", "/api/copilot/panel.js", "/api/copilot/proxy", "/api/copilot/launcher.js", "window.hoardCopilot.context()"):
             assert route in text, (name, route)

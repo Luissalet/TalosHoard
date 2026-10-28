@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parents[2]  # the Talos repository root, where the funes_hoard package lives
 
 
 def _run(*args):
