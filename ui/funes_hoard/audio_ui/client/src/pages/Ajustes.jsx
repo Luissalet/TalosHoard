@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import { useTurnRefresh } from "../copilot.js";
 import { useApp } from "../App.jsx";
+import Bench from "../components/Bench.jsx";
 import { PageHeader, Switch } from "../components/ui.jsx";
 import { fmtBytes, KIND_LABEL } from "../format.js";
 
@@ -30,7 +31,7 @@ function Row({ label, help, children }) {
 }
 
 export default function Ajustes() {
-  const { status, act } = useApp();
+  const { status, act, notify } = useApp();
   const [settings, setSettings] = useState(null);
   useEffect(() => { api.settings().then(setSettings).catch(() => {}); }, []);
   // Every control here saves on change, so there is no unsaved text to protect: just read the settings again.
@@ -82,12 +83,20 @@ export default function Ajustes() {
         <Row label="Fragmento máximo en directo" help="Segundos de habla continua antes de enviar al modelo.">
           <input type="number" className="field field-sm w-24 text-right num" min={5} max={60} value={settings.live_chunk_max_s} onChange={(e) => save({ live_chunk_max_s: Number(e.target.value) })} />
         </Row>
+        <Row label="Quitar el eco del micrófono" help="Con altavoces, el micrófono vuelve a oír al otro lado. Al terminar la transcripción se descartan las líneas del micrófono que solo suenan mientras suena el sistema (60 % o más, y al menos el doble de bajas) o que repiten palabra por palabra lo que acaba de decir la otra pista.">
+          <Switch checked={settings.echo_cleanup} label="Quitar el eco del micrófono" onChange={(v) => save({ echo_cleanup: v })} />
+        </Row>
       </section>
+
+      <Bench notify={notify} />
 
       <section className="panel mb-5">
         <h2 className="text-[17px] font-semibold">Acta de reuniones</h2>
         <Row label="Escribir el acta al terminar" help="Cuando una reunión o entrevista acaba de transcribirse, el modelo local escribe el acta (resumen, decisiones y compromisos con su cita) y avisa a las demás apps. Necesita un modelo de lenguaje cargado en Faustus u Ollama; si no hay, se puede generar a mano más tarde.">
           <Switch checked={settings.auto_minutes} label="Acta automática" onChange={(v) => save({ auto_minutes: v })} />
+        </Row>
+        <Row label="Dividir en capítulos al terminar" help="Las reuniones y entrevistas de tres minutos o más se dividen en capítulos (entre 2 y 12, con título corto) llamando al modelo global sin herramientas. Cada inicio se ajusta a una línea real de la transcripción y se ve en el acta y sobre la forma de onda.">
+          <Switch checked={settings.auto_chapters} label="Capítulos automáticos" onChange={(v) => save({ auto_chapters: v })} />
         </Row>
       </section>
 

@@ -1,0 +1,7 @@
+{
+ "about": "Silence: twenty seconds of room noise and nothing said; the transcript must be empty.",
+ "tracks": {
+  "mic": "mic.ogg",
+  "computer": "computer.ogg"
+ }
+}

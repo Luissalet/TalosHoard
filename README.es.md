@@ -1,5 +1,36 @@
 # Talos's Hoard
 
+**Audio: limpieza de eco, capítulos de reunión y banco de transcripción.** Con altavoces,
+el micrófono vuelve a oír al otro lado y la pasada final escribía la misma frase dos
+veces, la segunda como «yo». Al terminar la transcripción se descartan las líneas del
+micrófono que sólo suenan mientras suena la pista del sistema (60 % o más de sus
+fotogramas activos, y al menos el doble de bajas) o que repiten palabra por palabra lo
+que dijo la otra pista en un margen de dos segundos; la sesión guarda cuántas
+(`stats.final.echo`). Ajuste **Quitar el eco del micrófono** (activado por defecto);
+`scribe_echo_check` lista las líneas de eco de una sesión ya hecha y, con `apply: true`,
+las borra.
+Las reuniones y entrevistas de tres minutos o más se dividen en 2-12 **capítulos** con
+una sola llamada sin herramientas al modelo global: cada inicio se ajusta al comienzo de
+una línea real de la transcripción, se ordena, se quitan duplicados y el primero pasa a
+la primera línea; los títulos tienen 2-6 palabras en el idioma de la transcripción. Los
+capítulos salen en la página de la sesión (pulsar salta), como marcas sobre la forma de
+onda, en el acta y en las exportaciones MD/TXT. Ajuste **Dividir en capítulos al
+terminar**; MCP `scribe_chapters` (`regenerate` vuelve a preguntar), HTTP
+`GET/POST /audio/api/sessions/{id}/chapters`.
+El **Banco de transcripción** (Ajustes → Audio, MCP `scribe_bench` / `scribe_bench_status`,
+HTTP `/audio/api/bench`) pasa cuatro grabaciones con guion conocido (voces superpuestas,
+eco por altavoces, música de fondo y silencio) por el motor configurado, el filtro de
+alucinaciones, la limpieza de eco y la unión de pistas; puntúa palabras halladas, lado
+correcto, eco colado, líneas inventadas y segundos, lo compara con la misma salida sin
+limpieza de eco y guarda el resultado en `<datos de audio>/bench-results.json`. Medido con
+faster-whisper small en CPU int8: llamada 90 % de palabras halladas, 100 % del lado
+correcto, 0 colado, 0 inventadas; llamada con eco por altavoces 90 %, 100 % y 0 colado
+(23 líneas de eco quitadas; sin limpieza se colaban 18 y salían 46 líneas en vez de 20);
+música 99 %; silencio 0 líneas. El catálogo pasa a **101 herramientas** (cuatro nuevas:
+`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). Las
+grabaciones de prueba son de terceros con licencia CC0 y el método sigue un proyecto con
+licencia MIT; véase `funes_hoard/audio_memory/NOTICE-meeting-recorder.md`.
+
 En **Audio → Sesión**, **Buscar en esta sesión** abre la búsqueda con su ID
 exacto, aunque otra sesión tenga el mismo título. Texto, tipo y fechas se
 combinan con ese ámbito. **Buscar en todas las sesiones** quita sólo el ámbito
@@ -66,7 +97,7 @@ Memoria de pantalla, portapapeles, actividad, audio, vigilancia de servicios y g
 - **Pantalla:** capturas, OCR, búsqueda visual y textual, imágenes similares, línea de tiempo, exclusiones, modo privado, importación de imágenes y carpetas vigiladas, fijados, exportación y retención.
 - **Portapapeles:** historial de texto e imágenes, tipos, OCR, búsqueda, favoritos, edición, borrado/restauración, copiar y agrupar.
 - **Actividad:** ventanas, aplicaciones, inactividad y bloqueo, archivos recientes, commits, proyectos, clasificación, privacidad, resúmenes, exportaciones y memoria conjunta.
-- **Audio:** micrófono y sonido del sistema, importación, transcripción en directo, búsqueda, notas, etiquetas, exportaciones, actas y servicio compartido de transcripción.
+- **Audio:** micrófono y sonido del sistema, importación, transcripción en directo, limpieza de eco entre pistas, búsqueda, notas, etiquetas, exportaciones, actas, capítulos de reunión, banco de transcripción y servicio compartido de transcripción.
 - **Servicios:** salud, incidentes y causas probables, registros, GPU, bus de eventos, trabajos fallidos, sitios/DNS/certificados/dominios, avisos y políticas de reinicio.
 - **Disco:** análisis de espacio, árbol, archivos grandes/antiguos, extensiones, limpieza, papelera y borrado definitivo con sus comprobaciones, scripts, selector de carpeta, ZIP divididos y copias de modelos.
 
@@ -118,7 +149,7 @@ fallida. Conserva filtros y selección; el lector de texto sigue disponible.
 Usa las rutas nativas de imagen y metadatos. `clip_get` de MCP mantiene dimensiones
 y texto OCR: no devuelve píxeles ni realiza OCR nuevo.
 
-El catálogo contiene **97 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare y dos para consultar/cambiar los módulos. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
+El catálogo contiene **101 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare, dos para consultar/cambiar los módulos y cuatro de audio (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`.
 

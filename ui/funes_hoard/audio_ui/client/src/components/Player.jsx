@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import { fmtClock } from "../format.js";
 
 /** Native audio element plus a waveform-lite bar (peaks) that seeks on click. */
-export default function Player({ sessionId, duration, seekTo, onTime }) {
+export default function Player({ sessionId, duration, seekTo, onTime, chapters }) {
   const audio = useRef(null);
   const [peaks, setPeaks] = useState([]);
   const [time, setTime] = useState(0);
@@ -38,6 +38,9 @@ export default function Player({ sessionId, duration, seekTo, onTime }) {
       <div className="wave" onClick={clickWave} role="slider" aria-label="Posición" aria-valuemin={0} aria-valuemax={Math.round(total)} aria-valuenow={Math.round(time)}>
         {peaks.map((p, index) => (
           <i key={index} className={index / peaks.length <= played ? "played" : ""} style={{ height: `${Math.max(4, p * 100)}%` }} />
+        ))}
+        {total > 0 && (chapters || []).map((c) => (
+          <span key={c.start_s} className="chapter-tick" style={{ left: `${Math.min(100, (c.start_s / total) * 100)}%` }} title={`${fmtClock(c.start_s)} · ${c.title}`} />
         ))}
         <span className="cursor" style={{ left: `${played * 100}%` }} />
       </div>

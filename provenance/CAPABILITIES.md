@@ -63,6 +63,10 @@ Source tool definitions and implementations are incorporated in this repository.
 | audio | transcribe_status | transcribe_status |
 | audio | transcribe_cancel | transcribe_cancel |
 | audio | scribe_delete | scribe_delete |
+| audio | scribe_chapters | scribe_chapters |
+| audio | scribe_echo_check | scribe_echo_check |
+| audio | scribe_bench | scribe_bench |
+| audio | scribe_bench_status | scribe_bench_status |
 | activity | activity_now | activity_now |
 | activity | activity_agents_day | activity_agents_day |
 | activity | activity_where_was_i | activity_where_was_i |

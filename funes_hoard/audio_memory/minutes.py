@@ -752,8 +752,8 @@ class _NoModel(RuntimeError):
 
 
 # ------------------------------------------------------------------- rendering --
-def render_minutes_md(session: dict, minutes: dict, heading: int = 1) -> str:
-    """Markdown of the minutes alone (the export puts them above the transcript)."""
+def render_minutes_md(session: dict, minutes: dict, heading: int = 1, chapters: list[dict] | None = None) -> str:
+    """Markdown of the minutes alone (the export puts them above the transcript). ``chapters`` adds the chapter list after the summary."""
     h = "#" * heading
     sub = "#" * (heading + 1)
     stamp = datetime.fromtimestamp(session["started_at"]).strftime("%Y-%m-%d %H:%M") if session.get("started_at") else ""
@@ -766,6 +766,8 @@ def render_minutes_md(session: dict, minutes: dict, heading: int = 1) -> str:
         lines += [f"- Generada con: {minutes['model']} (revisa las citas antes de fiarte)"]
     lines += ["", f"{sub} Resumen", ""]
     lines += [f"- {line}" for line in minutes["summary"].split("\n") if line.strip()] or ["_Sin resumen._"]
+    if chapters:
+        lines += ["", f"{sub} Capítulos", ""] + [f"- `{hms(c['start_s'])}` {c['title']}" for c in chapters]
     if minutes.get("decisions"):
         lines += ["", f"{sub} Decisiones", ""] + [f"- {d}" for d in minutes["decisions"]]
     lines += ["", f"{sub} Acciones", ""]

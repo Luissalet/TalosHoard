@@ -28,6 +28,8 @@ class Settings(BaseModel):
     live_transcription: bool = True
     live_chunk_max_s: int = Field(15, ge=5, le=60)
     auto_minutes: bool = True  # write the minutes of a finished meeting/interview in the background
+    auto_chapters: bool = True  # divide a finished meeting/interview of 3+ minutes into chapters in the background
+    echo_cleanup: bool = True  # drop microphone lines that are the system audio coming back through the speakers
 
 
 class SettingsPatch(BaseModel):
@@ -44,6 +46,8 @@ class SettingsPatch(BaseModel):
     live_transcription: bool | None = None
     live_chunk_max_s: int | None = Field(None, ge=5, le=60)
     auto_minutes: bool | None = None
+    auto_chapters: bool | None = None
+    echo_cleanup: bool | None = None
 
 
 class SettingsStore:

@@ -1,0 +1,7 @@
+{
+ "about": "Overlapping speech: you on a headset, three people on the other side who interrupt each other and say yeah in between.",
+ "tracks": {
+  "mic": "mic.ogg",
+  "computer": "computer.ogg"
+ }
+}

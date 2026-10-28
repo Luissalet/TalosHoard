@@ -10,6 +10,7 @@ import numpy as np
 
 from .audio import TRACK_MIC, TRACK_SYSTEM
 from .audio.wav import SAMPLE_RATE, mix_tracks, read_wav, write_wav
+from .echo import EchoStats, drop_echo
 from .events import EventBus
 from .merge import coalesce, merge_tracks
 from .settings import SettingsStore
@@ -45,6 +46,9 @@ class Pipeline:
     def _sensitivity(self) -> int:
         return self.settings.get().vad_sensitivity if self.settings else 2
 
+    def _echo_cleanup(self) -> bool:
+        return self.settings.get().echo_cleanup if self.settings else True
+
     def enqueue_final(self, session_id: str) -> None:
         self.store.update(session_id, status="processing", error="")
         self.worker.submit(f"final {session_id}", lambda: self.run_final(session_id), PRIORITY_FINAL)
@@ -62,6 +66,9 @@ class Pipeline:
             stats = FilterStats()
             sensitivity = self._sensitivity()
             per_track = {name: guarded_transcribe(self.transcriber, samples, session["language"], sensitivity, stats) for name, samples in tracks.items()}
+            echo = EchoStats()
+            if self._echo_cleanup() and TRACK_MIC in per_track and TRACK_SYSTEM in per_track:
+                per_track[TRACK_MIC], echo = drop_echo(per_track[TRACK_MIC], per_track[TRACK_SYSTEM], tracks[TRACK_MIC], tracks[TRACK_SYSTEM])
             merged = coalesce(merge_tracks(per_track))
             duration = max(len(s) for s in tracks.values()) / SAMPLE_RATE
             audio_path = folder / "audio.wav"
@@ -70,9 +77,9 @@ class Pipeline:
             elif "audio" not in tracks:
                 audio_path = folder / f"{next(iter(tracks))}.wav"
             stored = self.store.replace_segments(session_id, merged)
-            all_stats = {**session.get("stats", {}), "final": stats.as_dict(), "no_speech": not stored}
+            all_stats = {**session.get("stats", {}), "final": {**stats.as_dict(), "echo": echo.as_dict()}, "no_speech": not stored}
             updated = self.store.update(session_id, status="done", duration_s=round(duration, 2), audio_path=str(audio_path), error="", ended_at=session["ended_at"] or time.time(), stats=all_stats)
-            log.info("final pass %s: %d segments in %.1fs (silent chunks %d, dropped %d)", session_id, len(stored), time.time() - started, stats.skipped_silent, stats.dropped)
+            log.info("final pass %s: %d segments in %.1fs (silent chunks %d, dropped %d, echo %d)", session_id, len(stored), time.time() - started, stats.skipped_silent, stats.dropped, echo.removed)
             self.bus.publish(session_id, "done", {"status": "done", "segments": len(stored), "duration_s": round(duration, 2), "no_speech": not stored})
             if self.on_done is not None:
                 try:

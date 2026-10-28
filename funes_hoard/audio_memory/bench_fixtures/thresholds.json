@@ -1,0 +1,6 @@
+{
+ "call": {"min": {"found": 0.85, "side": 0.95}, "max": {"leaked": 0, "invented": 0}},
+ "call-speakers": {"min": {"found": 0.85, "side": 0.95}, "max": {"leaked": 0, "invented": 0}},
+ "music": {"min": {"found": 0.95, "side": 0.95}, "max": {"leaked": 0, "invented": 0}},
+ "silence": {"max": {"lines": 0, "invented": 0}}
+}

@@ -3099,6 +3099,160 @@
     "module": "audio"
   },
   {
+    "name": "scribe_chapters",
+    "description": "Chapters of a meeting: where each topic starts, with a short title. Capítulos.\nWrites (or returns the stored) chapters of a transcribed meeting with the global language model, without tools, and cleans them in code: every start is a real transcript line, sorted, at least a minute apart, 2 to 12 of them, titles of up to six words in the transcript's language. Returns {status, chapters [{t, start_s, title}]}; status: ready | no_model | not_ready | no_speech | too_short (under 3 minutes) | error. regenerate=true replaces the stored ones.\nSinónimos: capítulos, índice de la reunión, por temas, temas de la reunión, marcas de tiempo, de qué se habló y cuándo, dividir la reunión.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "regenerate": {
+          "default": false,
+          "description": "Ask the model again even if chapters are stored (the old ones are replaced).",
+          "title": "Regenerate",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "ChaptersArgs",
+      "type": "object",
+      "x-timeout-s": 1800.0
+    },
+    "module": "audio",
+    "x-timeout-s": 1800.0
+  },
+  {
+    "name": "scribe_echo_check",
+    "description": "Find (and optionally remove) microphone lines that are the other side's audio coming back. Eco.\nIn a two-track recording the speakers play the other side and the microphone hears it again, so the same sentence appears under «yo». Lists those lines: ≥60 % of their sound over system audio and at least twice as quiet, or the same words as the other track within two seconds. apply=true deletes them from the stored transcript (not undoable).\nSinónimos: eco, duplicado, se oye dos veces, lo repite, altavoces, limpiar la transcripción, línea repetida del micrófono.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "apply": {
+          "default": false,
+          "description": "false (default) only lists the echo lines; true deletes them from the stored transcript.",
+          "title": "Apply",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "EchoCheckArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_bench",
+    "description": "Measure the transcription engine on hard recordings (overlap, echo, music, silence). Banco de pruebas.\nRuns the configured engine through the app's own path over four synthetic calls with a known script and scores found words, right side of the call, leaked echo, invented lines and seconds, also without the echo clean-up. Returns {job_id, status}; with wait_s (max 150) waits. Poll scribe_bench_status. It uses the transcription lane for a minute or two.\nSinónimos: banco de transcripción, medir whisper, probar el motor, calidad de la transcripción, evaluar el reconocimiento.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "cases": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 8,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Cases to run (call, call-speakers, music, silence). Empty: all of them.",
+          "title": "Cases"
+        },
+        "language": {
+          "default": "auto",
+          "description": "'auto' or a language code; the recordings are in English.",
+          "maxLength": 12,
+          "title": "Language",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the result (max 150). 0 returns {job_id, status} at once.",
+          "maximum": 150,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "title": "BenchArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_bench_status",
+    "description": "State and scores of a transcription bench job, or the last saved result.\nWith job_id: {status, current, done, result}; wait_s (max 150) waits. Without: {running, last}.\nSinónimos: resultado del banco, cómo va la medición, última medición del motor.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "job_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Job returned by scribe_bench. Empty: the last saved result.",
+          "title": "Job Id"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the job to finish (max 150).",
+          "maximum": 150,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "title": "BenchStatusArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
     "name": "scribe_delete",
     "description": "Permanently delete a session (only when asked; no undo). Keywords: borrar grabación, eliminar sesión.\nPermanently delete a session: audio, transcript and notes. Only when the user explicitly asks; there is no undo.\nSinónimos: borrar, eliminar, borra la grabación, elimina la reunión, olvidar.",
     "annotations": {

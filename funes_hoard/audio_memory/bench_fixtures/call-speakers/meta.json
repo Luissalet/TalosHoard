@@ -1,0 +1,7 @@
+{
+ "about": "Echo: the same call through speakers, so the other side leaks into the microphone 40 ms late.",
+ "tracks": {
+  "mic": "mic.ogg",
+  "computer": "computer.ogg"
+ }
+}

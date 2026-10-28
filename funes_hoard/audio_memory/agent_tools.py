@@ -26,7 +26,10 @@ Never start a recording unless the user explicitly asks for it in the current me
 Prefer scribe_search to find a topic across sessions, then scribe_transcript around the hit for context.
 scribe_minutes gives the minutes (acta) of a transcribed session: summary, decisions, action items and open questions. They were written by a local model and checked against the transcript; every action item carries a literal quote with its time, so cite that quote and time, and say "según el acta" rather than presenting the summary as certain. status "no_model" means no local language model is available: say so, never write minutes yourself as if they were stored ones.
 minutes_get gives the same minutes in a compact shape for other apps (title, date, attendees, action items with owner and due, summary).
-scribe_import_file turns an audio or video file already on this computer into a session (the original is never moved or deleted); with wait_s it waits for the transcript."""
+scribe_import_file turns an audio or video file already on this computer into a session (the original is never moved or deleted); with wait_s it waits for the transcript.
+scribe_chapters gives the chapters of a meeting (start time and short title of each topic, written by the global model and cleaned by code: every start is a real transcript line). Quote them as "capítulo" with their time. status "no_model" means no language model is available; "too_short" means under three minutes.
+scribe_echo_check finds microphone lines that are the other side coming back through the speakers (apply=false only lists them; apply=true removes them from the transcript, which cannot be undone except by re-transcribing).
+scribe_bench measures the configured transcription engine on hard recordings (overlapping speech, echo, music, silence) and returns a job; poll scribe_bench_status. It occupies the transcription lane for a minute or two."""
 
 KindArg = Literal["meeting", "interview", "note", "other"]
 LangArg = Literal["auto", "es", "en"]
@@ -103,6 +106,27 @@ class ImportFileArgs(BaseModel):
     kind: KindArg = "other"
     language: LangArg = "auto"
     wait_s: float = Field(0, ge=0, le=3600, description="Seconds to wait for the transcription to finish. 0 returns the session at once; poll scribe_sessions or scribe_transcript later.")
+
+
+class ChaptersArgs(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=64)
+    regenerate: bool = Field(False, description="Ask the model again even if chapters are stored (the old ones are replaced).")
+
+
+class EchoCheckArgs(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=64)
+    apply: bool = Field(False, description="false (default) only lists the echo lines; true deletes them from the stored transcript.")
+
+
+class BenchArgs(BaseModel):
+    cases: list[str] | None = Field(None, max_length=8, description="Cases to run (call, call-speakers, music, silence). Empty: all of them.")
+    language: str = Field("auto", max_length=12, description="'auto' or a language code; the recordings are in English.")
+    wait_s: float = Field(0, ge=0, le=150, description="Seconds to wait for the result (max 150). 0 returns {job_id, status} at once.")
+
+
+class BenchStatusArgs(BaseModel):
+    job_id: str | None = Field(None, max_length=64, description="Job returned by scribe_bench. Empty: the last saved result.")
+    wait_s: float = Field(0, ge=0, le=150, description="Seconds to wait for the job to finish (max 150).")
 
 
 class TranscribeFileArgs(BaseModel):
@@ -221,7 +245,9 @@ def run_tag(svc: Services, a: TagArgs):
 
 def run_export(svc: Services, a: ExportArgs):
     session = _require(svc, a.session_id)
-    return {"format": a.format, "text": render(a.format, session, svc.sessions.segments(a.session_id), svc.minutes.get(a.session_id) if a.format == "md" else None)}
+    stored = svc.chapters.get(a.session_id)
+    return {"format": a.format, "text": render(a.format, session, svc.sessions.segments(a.session_id), svc.minutes.get(a.session_id) if a.format == "md" else None,
+                                               stored["chapters"] if stored and a.format in ("md", "txt") else None)}
 
 
 def _agent_minutes(minutes: dict) -> dict:
@@ -252,6 +278,51 @@ def run_minutes_get(svc: Services, a: MinutesGetArgs):
     if result.get("status") != "ready" or not result.get("minutes"):
         return {"ok": False, "status": result.get("status", "error"), "minutes_id": a.minutes_id, "detail": result.get("detail", "")}
     return {"ok": True, "status": "ready", "cached": bool(result.get("cached")), **family_view(a.minutes_id, result["minutes"])}
+
+
+def run_chapters(svc: Services, a: ChaptersArgs):
+    _require(svc, a.session_id)
+    result = svc.chapters.generate(a.session_id, regenerate=a.regenerate)
+    if result.get("chapters"):
+        result["chapters"] = [{"t": hms(c["start_s"]), **c} for c in result["chapters"]]
+        result["created_at"] = iso_local(result.get("created_at"))
+    return result
+
+
+def run_echo_check(svc: Services, a: EchoCheckArgs):
+    from .echo import find_echo
+    from .pipeline import load_tracks
+
+    session = _require(svc, a.session_id)
+    if svc.recorder.current and svc.recorder.current.session_id == a.session_id:
+        raise ValueError("Stop the recording before checking it.")
+    segments = svc.sessions.segments(a.session_id)
+    mine = [s for s in segments if s["speaker"] == "yo"]
+    theirs = [s for s in segments if s["speaker"] == "otros"]
+    if not mine or not theirs:
+        return {"session_id": a.session_id, "echo": [], "removed": 0, "applied": False,
+                "note": "Echo needs both sides in the transcript (microphone «yo» and system «otros»); this session has " + ("no microphone lines." if not mine else "no system lines.")}
+    tracks = load_tracks(svc.sessions.session_dir(a.session_id))
+    verdicts = find_echo([(s["start_s"], s["end_s"], s["text"]) for s in mine], [(s["start_s"], s["end_s"], s["text"]) for s in theirs],
+                         tracks.get("mic"), tracks.get("system"))
+    found = [{"segment_id": s["id"], "t": hms(s["start_s"]), "start_s": s["start_s"], "text": s["text"], "reason": v}
+             for s, v in zip(mine, verdicts) if v]
+    removed = svc.sessions.delete_segments(a.session_id, [f["segment_id"] for f in found]) if a.apply and found else 0
+    audio_note = "" if "mic" in tracks and "system" in tracks else " The audio tracks are not on disk, so only the word rule was applied."
+    return {"session_id": a.session_id, "checked": len(mine), "echo": found, "removed": removed, "applied": bool(a.apply),
+            "note": (f"{removed} echo lines removed. Minutes and chapters written before this still describe the old text; regenerate them if you need them." if removed
+                     else "No echo lines found." if not found else "Nothing was changed; call again with apply=true to remove these lines.") + audio_note}
+
+
+def run_bench(svc: Services, a: BenchArgs):
+    job = svc.bench.start(a.cases, a.language)
+    return svc.bench.status(job["job_id"], a.wait_s) if a.wait_s else job
+
+
+def run_bench_status(svc: Services, a: BenchStatusArgs):
+    if a.job_id:
+        return svc.bench.status(a.job_id, a.wait_s)
+    return {"running": svc.bench.running(), "last": svc.bench.last()}
 
 
 TRANSCRIPT_TEXT_MAX_CHARS = 60000
@@ -346,6 +417,10 @@ TOOLS: list[Tool] = [
     Tool("transcribe_file", "Speech to text of an audio/video file by path, no session kept. Transcribir un archivo.\nTranscribes a file already on this computer (absolute path) and returns {job_id, status, progress, language, duration_s, text, segments [{start_s, end_s, text, words}], model, device, note, stats}; with wait_s (max 150) it waits for the result, otherwise poll transcribe_status. Nothing is stored in Funes: no session, no copy of the file. For the user's own recordings use scribe_import_file.\nSinónimos: transcribir, pasar a texto, audio a texto, subtítulos de un vídeo, dictado, speech to text.", TranscribeFileArgs, _ann(True), run_transcribe_file),
     Tool("transcribe_status", "State and result of a transcription job started with transcribe_file.\nSame answer as transcribe_file; wait_s (max 150) waits for it to finish. Finished jobs are kept for an hour.\nSinónimos: cómo va la transcripción, estado del trabajo, resultado de la transcripción.", TranscribeStatusArgs, _ann(True), run_transcribe_status),
     Tool("transcribe_cancel", "Cancel a transcription job started with transcribe_file (idempotent).\nA finished job is left as it is and its own status returned.\nSinónimos: cancelar la transcripción, parar el trabajo.", TranscribeCancelArgs, _ann(False, False, True), run_transcribe_cancel),
+    Tool("scribe_chapters", "Chapters of a meeting: where each topic starts, with a short title. Capítulos.\nWrites (or returns the stored) chapters of a transcribed meeting with the global language model, without tools, and cleans them in code: every start is a real transcript line, sorted, at least a minute apart, 2 to 12 of them, titles of up to six words in the transcript's language. Returns {status, chapters [{t, start_s, title}]}; status: ready | no_model | not_ready | no_speech | too_short (under 3 minutes) | error. regenerate=true replaces the stored ones.\nSinónimos: capítulos, índice de la reunión, por temas, temas de la reunión, marcas de tiempo, de qué se habló y cuándo, dividir la reunión.", ChaptersArgs, _ann(False, False, True), run_chapters),
+    Tool("scribe_echo_check", "Find (and optionally remove) microphone lines that are the other side's audio coming back. Eco.\nIn a two-track recording the speakers play the other side and the microphone hears it again, so the same sentence appears under «yo». Lists those lines: ≥60 % of their sound over system audio and at least twice as quiet, or the same words as the other track within two seconds. apply=true deletes them from the stored transcript (not undoable).\nSinónimos: eco, duplicado, se oye dos veces, lo repite, altavoces, limpiar la transcripción, línea repetida del micrófono.", EchoCheckArgs, _ann(False, True, True), run_echo_check),
+    Tool("scribe_bench", "Measure the transcription engine on hard recordings (overlap, echo, music, silence). Banco de pruebas.\nRuns the configured engine through the app's own path over four synthetic calls with a known script and scores found words, right side of the call, leaked echo, invented lines and seconds, also without the echo clean-up. Returns {job_id, status}; with wait_s (max 150) waits. Poll scribe_bench_status. It uses the transcription lane for a minute or two.\nSinónimos: banco de transcripción, medir whisper, probar el motor, calidad de la transcripción, evaluar el reconocimiento.", BenchArgs, _ann(False, False, False), run_bench),
+    Tool("scribe_bench_status", "State and scores of a transcription bench job, or the last saved result.\nWith job_id: {status, current, done, result}; wait_s (max 150) waits. Without: {running, last}.\nSinónimos: resultado del banco, cómo va la medición, última medición del motor.", BenchStatusArgs, _ann(True), run_bench_status),
     Tool("scribe_delete", "Permanently delete a session (only when asked; no undo). Keywords: borrar grabación, eliminar sesión.\nPermanently delete a session: audio, transcript and notes. Only when the user explicitly asks; there is no undo.\nSinónimos: borrar, eliminar, borra la grabación, elimina la reunión, olvidar.", SessionIdArgs, _ann(False, True, True), run_delete),
 ]
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
