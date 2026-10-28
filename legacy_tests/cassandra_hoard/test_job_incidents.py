@@ -275,8 +275,9 @@ def test_the_agenda_lists_open_incidents_only_and_needs_the_token(client):
     assert agenda(client).json()["items"] == []
 
 
-def test_the_manifest_declares_the_agenda():
+def test_the_root_manifest_lists_cassandra_as_absorbed():
     import json
     from pathlib import Path
-    manifest = json.loads((Path(__file__).resolve().parent.parent / "faustus-plugin.json").read_text(encoding="utf-8"))
-    assert manifest["x-family"]["agenda"] is True
+    # Talos's root manifest lists Cassandra among the absorbed apps; the job incidents themselves are the feature under test here.
+    manifest = json.loads((Path(__file__).resolve().parents[2] / "faustus-plugin.json").read_text(encoding="utf-8"))
+    assert "cassandra_hoard" in manifest["x-family"]["absorbs"]

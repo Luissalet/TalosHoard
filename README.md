@@ -110,6 +110,8 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 | Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, scheduled SEO/GEO audits with baseline and drift, notifications and restart policies |
 | Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, ZIP splitting and model-backup management |
 
+The Faustus copilot is served by Talos itself: `GET /api/copilot/info`, `GET /api/copilot/panel.js`, `POST /api/copilot/proxy` and `GET /api/copilot/launcher.js` (each module's pages also answer under `/<module>/api/copilot/`). The Services interface registers `window.hoardCopilot.context()` so the assistant sees the service, site, incident or filter on screen; the conversation lives in Faustus, not in Talos.
+
 The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`. The shared Hoard theme, product icon and Faustus copilot apply throughout. Capture backends and operating-system integrations retain their original platform requirements.
 
 In **Activity → Projects**, **Resume** reads the selected project's recorded
