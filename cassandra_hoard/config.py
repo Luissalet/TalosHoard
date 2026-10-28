@@ -62,6 +62,8 @@ class Config:
     faustus_wait_min: float = 15.0  # announce a Faustus approval/question waiting this long (0 = off)
     sites: bool = True  # watch the public sites listed in data/sites.json (none are built in)
     sites_tick_s: float = 15.0  # how often the site watcher looks for sites whose check is due
+    seo: bool = True  # run the scheduled SEO / GEO audits of the sites that opted in (seo_interval_h in data/sites.json)
+    seo_tick_s: float = 60.0  # how often the SEO watcher looks for audits that are due
 
     @property
     def paths(self) -> AppPaths:
@@ -132,4 +134,6 @@ class Config:
             public_url=env_str("CASSANDRA_PUBLIC_URL") or "",
             sites=env_flag("CASSANDRA_SITES", True),
             sites_tick_s=env_float("CASSANDRA_SITES_TICK_S", default=15.0, minimum=1.0, maximum=3600.0),
+            seo=env_flag("CASSANDRA_SEO", True),
+            seo_tick_s=env_float("CASSANDRA_SEO_TICK_S", default=60.0, minimum=1.0, maximum=3600.0),
         )

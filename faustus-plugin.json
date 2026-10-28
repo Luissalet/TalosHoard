@@ -62,6 +62,7 @@
     "site-uptime",
     "tls-certificates",
     "domain-expiry",
+    "scheduled seo-geo audit of public sites with baseline and drift",
     "faustus-attention",
     "faustus-farm",
     "running-agents",

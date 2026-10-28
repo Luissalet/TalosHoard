@@ -33,7 +33,72 @@ function DomainCell({ domain }) {
   );
 }
 
-function Detail({ site, t, lang }) {
+const signed = (n) => (n === null || n === undefined ? DASH : `${n > 0 ? "+" : ""}${Math.round(n * 10) / 10}`);
+const deltaColor = (n) => (n === null || n === undefined || n === 0 ? "var(--muted)" : n < 0 ? "var(--danger)" : "var(--ok)");
+
+function SeoPanel({ site, seo, t, lang, onRun, onBaseline }) {
+  const running = seo?.state === "running";
+  return (
+    <div className="mt-2 space-y-1 border-t pt-2" style={{ borderColor: "var(--line)" }} data-testid="site-seo">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="font-semibold" title={t("seo_source")}>{t("seo_title")}</div>
+        <div className="flex gap-2">
+          <button type="button" className="btn btn-sm" disabled={running} onClick={() => onRun(site)} data-testid="seo-run">{t("seo_run")}</button>
+          {seo?.score !== null && seo?.score !== undefined && (
+            <button type="button" className="btn btn-sm" onClick={() => onBaseline(site)} data-testid="seo-baseline">{t("seo_baseline")}</button>
+          )}
+        </div>
+      </div>
+      {(!seo || seo.state === "off") && <div className="help">{t("seo_off")}</div>}
+      {seo?.state === "pending" && <div className="help">{t("seo_pending")}</div>}
+      {running && <div className="help">{t("seo_running")}</div>}
+      {seo?.state === "unavailable" && (
+        <div style={{ color: "var(--warn)" }} data-testid="seo-error">
+          {t("seo_unavailable", { error: seo.error_kind && t(`seo_err_${seo.error_kind}`) !== `seo_err_${seo.error_kind}` ? t(`seo_err_${seo.error_kind}`) : seo.error || "" })}
+        </div>
+      )}
+      {seo?.score !== null && seo?.score !== undefined && (
+        <>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span><span className="help">{t("seo_score")}</span> <span className="num text-[20px] font-semibold" data-testid="seo-score">{Math.round(seo.score * 10) / 10}</span></span>
+            {seo.state === "unavailable" && seo.scored_at ? <span className="help">{t("seo_measured")} {isoClock(seo.scored_at, lang)}</span> : null}
+            <span className="num" style={{ color: deltaColor(seo.delta_previous) }} data-testid="seo-delta-prev">{signed(seo.delta_previous)} <span className="help">{t("seo_vs_prev")}</span></span>
+            <span className="num" style={{ color: deltaColor(seo.delta_baseline) }} data-testid="seo-delta-base">{signed(seo.delta_baseline)} <span className="help">{t("seo_vs_base")}</span></span>
+          </div>
+          {seo.categories?.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-1" data-testid="seo-categories">
+              {seo.categories.map((c) => (
+                <span key={c.name} className="num">
+                  <span className="help">{c.name}</span> {Math.round(c.score)}
+                  {c.delta_previous ? <span style={{ color: deltaColor(c.delta_previous) }}> {signed(c.delta_previous)}</span> : null}
+                </span>
+              ))}
+            </div>
+          )}
+          <div data-testid="seo-critical">
+            {seo.critical?.length ? (
+              <>
+                <div style={{ color: "var(--danger)" }}>{t("seo_critical")}</div>
+                <ul className="ml-4 list-disc">{seo.critical.map((f) => <li key={f.id || f.title}>{f.title}{f.category ? <span className="help"> {"·"} {f.category}</span> : null}</li>)}</ul>
+              </>
+            ) : <div className="help">{t("seo_no_critical")}</div>}
+          </div>
+          {seo.new_findings?.length > 0 && <div className="help">{t("seo_new")}: {seo.new_findings.map((f) => f.title).slice(0, 6).join(" · ")}</div>}
+          {seo.resolved_findings?.length > 0 && <div className="help">{t("seo_resolved")}: {seo.resolved_findings.map((f) => f.title).slice(0, 6).join(" · ")}</div>}
+        </>
+      )}
+      {seo?.last_run && (
+        <div className="help">
+          {t("seo_last")}: {isoClock(seo.last_run, lang)}
+          {seo.next_run ? ` · ${t("seo_next")}: ${isoClock(seo.next_run, lang)}` : ""}
+          {seo.runs ? ` · ${t("seo_runs", { n: seo.runs })}` : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Detail({ site, seo, onRunSeo, onBaselineSeo, t, lang }) {
   const tls = site.tls;
   const domain = site.domain;
   const dns = site.dns || {};
@@ -79,6 +144,7 @@ function Detail({ site, t, lang }) {
           </>
         )}
       </div>
+      <SeoPanel site={site} seo={seo} t={t} lang={lang} onRun={onRunSeo} onBaseline={onBaselineSeo} />
     </div>
   );
 }
@@ -91,6 +157,7 @@ const baseOf = (site) => ({
   keyword: site.keyword || "",
   interval: String(site.interval_min),
   enabled: Boolean(site.enabled),
+  seo: site.seo_interval_h ? String(site.seo_interval_h) : "",
 });
 
 // The arguments of the update for the fields the user changed (a site edit is a patch: what the assistant changed meanwhile is kept).
@@ -102,11 +169,12 @@ const siteUpdate = (changed) => {
   if ("keyword" in changed) body.keyword = changed.keyword;
   if ("interval" in changed) body.interval_min = Number(changed.interval);
   if ("enabled" in changed) body.enabled = changed.enabled;
+  if ("seo" in changed) body.seo_interval_h = changed.seo === "" ? 0 : Number(changed.seo);
   return body;
 };
 
 function EditRow({ site, onSave, onRemove, t }) {
-  const base = useMemo(() => baseOf(site), [site.name, site.url, (site.expect_status || []).join(", "), site.keyword, site.interval_min, site.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  const base = useMemo(() => baseOf(site), [site.name, site.url, (site.expect_status || []).join(", "), site.keyword, site.interval_min, site.enabled, site.seo_interval_h]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState(base);
   const baseRef = useRef(base);
   // A refreshed site (the assistant edited it) updates the fields the user did not touch and keeps the ones being typed.
@@ -128,6 +196,7 @@ function EditRow({ site, onSave, onRemove, t }) {
       <input className="field num w-[110px]" value={form.expect} onChange={set("expect")} aria-label={t("site_expect")} title={t("site_expect")} />
       <input className="field flex-[1_1_120px]" value={form.keyword} onChange={set("keyword")} placeholder={t("site_keyword")} aria-label={t("site_keyword")} />
       <input className="field num w-[80px]" type="number" min="1" max="1440" value={form.interval} onChange={set("interval")} aria-label={t("site_interval")} title={t("site_interval")} />
+      <input className="field num w-[90px]" type="number" min="0" max="720" value={form.seo} onChange={set("seo")} placeholder="SEO h" aria-label={t("seo_every")} title={t("seo_every")} data-testid="site-seo-interval" />
       <label className="flex items-center gap-1 text-[12px]">
         <input type="checkbox" checked={form.enabled} onChange={set("enabled")} /> {t("site_enabled")}
       </label>
@@ -167,6 +236,7 @@ export default function SitesCard() {
   const [open, setOpen] = useState(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [seo, setSeo] = useState({});
 
   const load = useCallback(async () => {
     try {
@@ -174,12 +244,19 @@ export default function SitesCard() {
     } catch {
       // the shell shows the connection error
     }
+    try {
+      const overview = await api.seoSites();
+      setSeo(Object.fromEntries((overview.sites || []).map((s) => [s.id, s])));
+    } catch {
+      // an older server has no SEO routes: the sites card works without them
+    }
   }, []);
+  const seoRunning = Object.values(seo).some((s) => s.state === "running");
   useEffect(() => {
     load();
-    const timer = setInterval(load, 15000);
+    const timer = setInterval(load, seoRunning ? 3000 : 15000);
     return () => clearInterval(timer);
-  }, [load]);
+  }, [load, seoRunning]);
 
   useCopilotView("sites", { open, editing });
   useCopilotRefresh(load);
@@ -194,6 +271,14 @@ export default function SitesCard() {
     const result = await act(() => api.watchSite(body), t("saved"));
     await load();
     return result;
+  };
+  const runSeo = async (site) => {
+    await act(() => api.runSeo(site.id), t("seo_run_done"));
+    await load();
+  };
+  const baselineSeo = async (site) => {
+    await act(() => api.seoBaseline(site.id), t("seo_baseline_done"));
+    await load();
   };
   const remove = async (site) => {
     if (!window.confirm(t("site_remove_confirm", { name: site.name }))) return;
@@ -227,6 +312,9 @@ export default function SitesCard() {
               <div className="help num truncate text-[11px]">
                 {site.id}
                 {site.lane?.uptime_pct !== null && site.lane?.uptime_pct !== undefined ? ` \u00b7 ${site.lane.uptime_pct}%` : ""}
+                {seo[site.id]?.score !== null && seo[site.id]?.score !== undefined ? (
+                  <span data-testid="site-seo-score">{` \u00b7 SEO ${Math.round(seo[site.id].score)}`}<span style={{ color: seo[site.id].delta_previous < 0 ? "var(--danger)" : "var(--muted)" }}>{seo[site.id].delta_previous ? ` (${signed(seo[site.id].delta_previous)})` : ""}</span></span>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-1">
@@ -240,7 +328,7 @@ export default function SitesCard() {
               {site.lane ? <Lane segments={site.lane.segments} since={lanesWindow.since} until={lanesWindow.until} t={t} lang={lang} /> : <div className="lane" />}
             </div>
           </div>
-          {open === site.id && <Detail site={site} t={t} lang={lang} />}
+          {open === site.id && <Detail site={site} seo={seo[site.id]} onRunSeo={runSeo} onBaselineSeo={baselineSeo} t={t} lang={lang} />}
         </React.Fragment>
       ))}
       {editing && (

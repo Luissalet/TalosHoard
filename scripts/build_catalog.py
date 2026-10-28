@@ -31,6 +31,9 @@ async def main():
         if tool["name"] in ("scribe_minutes", "minutes_get", "scribe_chapters"):
             tool["x-timeout-s"] = 1800.0
             tool["inputSchema"]["x-timeout-s"] = 1800.0
+        elif tool["name"] == "sites_seo_run":
+            tool["x-timeout-s"] = 400.0
+            tool["inputSchema"]["x-timeout-s"] = 400.0
     assert len(names) == len(set(names)), "Duplicate tool names"
     target = ROOT / (product + "_hoard") / "catalog.json"
     target.write_text(json.dumps(tools, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

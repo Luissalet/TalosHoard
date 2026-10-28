@@ -1,5 +1,27 @@
 # Talos's Hoard
 
+**Servicios: vigilancia periódica del SEO y GEO de las webs públicas.** Una web de la lista
+**Webs públicas** se apunta con `seo_interval_h` (horas entre auditorías, de 1 a 720; se edita en el
+editor de la lista, con `sites_watch` o con `POST /services/api/sites`). Cada auditoría es una
+llamada a la herramienta `site_audit` de la Hoard de diseño a través del hub; Servicios lee la
+puntuación, la de cada categoría y los hallazgos, y guarda todas las ejecuciones (una fallida
+guarda su causa y se reintenta una hora después). La primera auditoría correcta es la **línea
+base**; cada ejecución se compara con la anterior (cambio de puntuación, categorías que se
+movieron, hallazgos nuevos o resueltos) y con la línea base (`sites_seo_baseline` o **Aceptar como
+referencia** la mueve tras un arreglo). Avisos en el bus de la familia: `cassandra.site.seo_drop`
+cuando la puntuación queda al menos `seo_drop_points` (2 por defecto) por debajo de la mejor de las
+últimas siete ejecuciones y por debajo de la anterior, y `cassandra.site.seo_critical` cuando aparece
+un hallazgo crítico que la ejecución anterior no tenía; la primera ejecución no avisa de nada y el
+aviso de Boop no lleva nombre de web, puntuación ni texto de hallazgos. MCP: `sites_seo` (estado,
+deriva, hallazgos críticos y, con `history`, las últimas ejecuciones), `sites_seo_run` (auditar
+ahora) y `sites_seo_baseline`; HTTP `GET /services/api/sites/seo`, `GET /services/api/sites/{id}/seo`,
+`POST /services/api/sites/seo/run` y `POST /services/api/sites/{id}/seo/baseline`. La tarjeta de
+webs del Panel muestra puntuación y cambio junto a cada web y un bloque **SEO y GEO** en su detalle.
+La herramienta de auditoría es de Vitruvius (tarea 1704): mientras no ofrezca `site_audit`, las
+auditorías quedan guardadas como fallidas con el motivo «Vitruvius aún no ofrece la auditoría» y
+nada más cambia. `CASSANDRA_SEO=0` apaga la vigilancia. El catálogo pasa a **104 herramientas**
+(tres nuevas para esta vigilancia, cuatro para audio).
+
 **Audio: limpieza de eco, capítulos de reunión y banco de transcripción.** Con altavoces,
 el micrófono vuelve a oír al otro lado y la pasada final escribía la misma frase dos
 veces, la segunda como «yo». Al terminar la transcripción se descartan las líneas del
@@ -26,8 +48,8 @@ limpieza de eco y guarda el resultado en `<datos de audio>/bench-results.json`. 
 faster-whisper small en CPU int8: llamada 90 % de palabras halladas, 100 % del lado
 correcto, 0 colado, 0 inventadas; llamada con eco por altavoces 90 %, 100 % y 0 colado
 (23 líneas de eco quitadas; sin limpieza se colaban 18 y salían 46 líneas en vez de 20);
-música 99 %; silencio 0 líneas. El catálogo pasa a **101 herramientas** (cuatro nuevas:
-`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). Las
+música 99 %; silencio 0 líneas. Cuatro herramientas de audio nuevas:
+`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`. Las
 grabaciones de prueba son de terceros con licencia CC0 y el método sigue un proyecto con
 licencia MIT; véase `funes_hoard/audio_memory/NOTICE-meeting-recorder.md`.
 
@@ -98,7 +120,7 @@ Memoria de pantalla, portapapeles, actividad, audio, vigilancia de servicios y g
 - **Portapapeles:** historial de texto e imágenes, tipos, OCR, búsqueda, favoritos, edición, borrado/restauración, copiar y agrupar.
 - **Actividad:** ventanas, aplicaciones, inactividad y bloqueo, archivos recientes, commits, proyectos, clasificación, privacidad, resúmenes, exportaciones y memoria conjunta.
 - **Audio:** micrófono y sonido del sistema, importación, transcripción en directo, limpieza de eco entre pistas, búsqueda, notas, etiquetas, exportaciones, actas, capítulos de reunión, banco de transcripción y servicio compartido de transcripción.
-- **Servicios:** salud, incidentes y causas probables, registros, GPU, bus de eventos, trabajos fallidos, sitios/DNS/certificados/dominios, avisos y políticas de reinicio.
+- **Servicios:** salud, incidentes y causas probables, registros, GPU, bus de eventos, trabajos fallidos, sitios/DNS/certificados/dominios, auditorías SEO/GEO periódicas con línea base y deriva, avisos y políticas de reinicio.
 - **Disco:** análisis de espacio, árbol, archivos grandes/antiguos, extensiones, limpieza, papelera y borrado definitivo con sus comprobaciones, scripts, selector de carpeta, ZIP divididos y copias de modelos.
 
 Cada módulo conserva su interfaz completa. Todo comparte el tema de los Hoards, el icono de Talos y el botón de Faustus.
@@ -149,7 +171,7 @@ fallida. Conserva filtros y selección; el lector de texto sigue disponible.
 Usa las rutas nativas de imagen y metadatos. `clip_get` de MCP mantiene dimensiones
 y texto OCR: no devuelve píxeles ni realiza OCR nuevo.
 
-El catálogo contiene **101 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare, dos para consultar/cambiar los módulos y cuatro de audio (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
+El catálogo contiene **104 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare, dos para consultar/cambiar los módulos, cuatro de audio (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`) y tres de vigilancia SEO/GEO (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`). La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`.
 

@@ -177,7 +177,7 @@ def test_database_has_the_shared_defaults_and_reads_old_plain_text_settings(tmp_
     db = Database(tmp_path / "x.db")
     try:
         assert db.one("PRAGMA foreign_keys")[0] == 1 and db.one("PRAGMA busy_timeout")[0] == 15000
-        assert db.schema_version == 3
+        assert db.schema_version == 4
         # rows written by the old class: a repr'd float and the bare JSON text of a dict
         db.execute("INSERT INTO settings(key, value) VALUES ('last_tick', '1790000000.5'), ('rdap_bootstrap', '{\"fetched_at\": 1, \"services\": []}')")
         assert float(db.get_setting("last_tick")) == 1790000000.5

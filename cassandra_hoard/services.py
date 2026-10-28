@@ -20,6 +20,7 @@ from .notifications import BoopNotifier
 from .poller import Poller
 from .registry import Registry
 from .restart import Restarter
+from .seo_watch import SeoWatcher
 from .sites import SITE_PREFIX, SiteStore, SiteWatcher
 from .times import iso
 
@@ -29,7 +30,8 @@ log = logging.getLogger("cassandra")
 class Services:
     def __init__(self, config: Config, *, clock_fn: Callable[[], float] = time.time, poller_kwargs: Optional[dict[str, Any]] = None,
                  restarter_kwargs: Optional[dict[str, Any]] = None, bus_kwargs: Optional[dict[str, Any]] = None,
-                 registry_kwargs: Optional[dict[str, Any]] = None, sites_kwargs: Optional[dict[str, Any]] = None):
+                 registry_kwargs: Optional[dict[str, Any]] = None, sites_kwargs: Optional[dict[str, Any]] = None,
+                 seo_kwargs: Optional[dict[str, Any]] = None):
         self.config = config
         self.clock = clock_fn
         self.started_at = time.time()
@@ -67,6 +69,9 @@ class Services:
         # The public websites (data/sites.json): up/down, certificate and domain expiry.
         self.sites = SiteWatcher(self.db, SiteStore(config.sites_path), incidents=self.incidents, emit=self._emit_event,
                                  clock_fn=clock_fn, tick_s=config.sites_tick_s, enabled=config.sites, **(sites_kwargs or {}))
+        # Scheduled SEO / GEO audits of those sites (the design Hoard's site_audit), with a baseline and drift between runs.
+        self.seo = SeoWatcher(self.db, self.sites.store, emit=self._emit_event, clock_fn=clock_fn, tick_s=config.seo_tick_s,
+                              enabled=config.seo, **(seo_kwargs or {}))
 
     def _emit_event(self, type_: str, data: dict[str, Any]) -> None:
         self.notifications.send(type_, data)
@@ -92,8 +97,10 @@ class Services:
                 self.bus.start()
             self.faustus_watch.start()
             self.sites.start()
+            self.seo.start()
 
     def stop(self) -> None:
+        self.seo.stop()
         self.sites.stop()
         self.faustus_watch.stop()
         self.bus.stop()
@@ -101,6 +108,8 @@ class Services:
         for watcher in (self.sites, self.faustus_watch, self.bus):
             if watcher._thread is not None:
                 watcher._thread.join()
+        if self.seo._thread is not None:  # an audit can be minutes into a call to another app: do not wait for it
+            self.seo._thread.join(timeout=10)
         self.db.close()
 
     # ---------- lookups ----------
@@ -150,6 +159,7 @@ class Services:
             "notifications": self.notifications.status(),
             "faustus_attention": self.faustus_watch.status(),
             "sites": self.sites.summary(),
+            "seo": self.seo.summary(),
             "auto_restart": self.config.auto_restart,
             "registry_error": self.registry.load_error,
             "registry_source": self.registry.source,

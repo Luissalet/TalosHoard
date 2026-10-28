@@ -46,4 +46,8 @@ export const api = {
   unwatchSite: (id) => request("DELETE", `/services/api/sites/${encodeURIComponent(id)}`),
   faustusFarm: () => request("GET", "/services/api/faustus/farm"),
   checkSites: (site) => request("POST", "/services/api/sites/check", { body: site ? { site } : {} }),
+  seoSites: () => request("GET", "/services/api/sites/seo"),
+  seoHistory: (id, limit = 10) => request("GET", `/services/api/sites/${encodeURIComponent(id)}/seo`, { params: { limit } }),
+  runSeo: (site) => request("POST", "/services/api/sites/seo/run", { body: { site } }),
+  seoBaseline: (id) => request("POST", `/services/api/sites/${encodeURIComponent(id)}/seo/baseline`),
 };

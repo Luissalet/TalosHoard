@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -23,7 +24,8 @@ Times accept ISO (2026-09-24T04:00), a clock time (04:00 = the last 04:00), or a
 "¿me está esperando Faustus?" / "is Faustus waiting for me?" → faustus_attention (approvals and questions waiting on the person, stalled runs, how long each has waited).
 "¿qué está haciendo Faustus ahora?" / "what is Faustus running right now?" / "¿cuánto presupuesto queda?" → faustus_farm (every chat turn in flight with the sub-agents it started grouped under it, dispatched jobs and their workers, a night shift, workflow runs and scheduled tasks, each with state, model, age and progress; plus the period budget: window used against its pace line, GPU seconds today, failure breaker, provider cooldowns). It carries names and states, never what anyone typed. Quote its titles, states and ages; a stalled item is one that stopped sending events, not a proven failure.
 Public websites (the sites other people use, watched from outside; the list is data/sites.json): "¿está mi web caída?" / "is my website up?", "¿cuándo caduca el certificado o el dominio?" / "when does the certificate or the domain expire?" → sites_status (state, latency, certificate days left, domain days left from RDAP, last change; a domain whose RDAP answer is unknown is unknown, not fine); "¿ha estado caída esta semana?" / "was it down this week?" → site_history. A site is down only after two failed checks in a row; its incidents (kind site) also appear in svc_incidents as service site:<id>. Certificate and domain dates are checked, not guessed: quote them with their days left.
-svc_restart, svc_watch and sites_watch change things: never restart a service or edit the watch list (services or sites) unless the user explicitly asks for it."""
+"¿ha bajado el SEO de mi web?" / "did my site's SEO drop?", "¿tiene hallazgos críticos?" → sites_seo (score now, change since the previous audit and since the baseline, categories, critical findings; with `history` its latest runs). The audits come from Vitruvius's site_audit on a schedule (sites_watch with seo_interval_h opts a site in); sites_seo_run audits now, sites_seo_baseline accepts the latest audit as the new reference. A failed run says why (Vitruvius not running, tool not offered yet): that is not a score. Quote the score and its change, never infer one.
+svc_restart, svc_watch and sites_watch change things: never restart a service or edit the watch list (services or sites) unless the user explicitly asks for it. The same goes for sites_seo_run (starts an audit) and sites_seo_baseline (moves the reference)."""
 
 
 class StatusArgs(BaseModel):
@@ -120,6 +122,22 @@ class SitesWatchArgs(BaseModel):
     interval_min: Optional[float] = Field(None, ge=1, le=1440, description="Minutes between checks (default 5, minimum 1).")
     enabled: Optional[bool] = Field(None, description="false pauses the checks.")
     domain: Optional[str] = Field(None, max_length=253, description="Registrable domain for the RDAP expiry lookup when the automatic guess is wrong (e.g. example.co.uk).")
+    seo_interval_h: Optional[float] = Field(None, ge=0, le=720, description="Hours between scheduled SEO/GEO audits of this site (1 to 720; 24 = daily). 0 turns the audit off. The audit is Vitruvius's site_audit.")
+    seo_drop_points: Optional[float] = Field(None, ge=0, le=100, description="Score points below the recent best that raise a drop alert (default 2). 0 returns to the default.")
+
+
+class SitesSeoArgs(BaseModel):
+    site: Optional[str] = Field(None, max_length=200, description="Site id, name or host; omit for every site that is audited or has been.")
+    history: int = Field(0, ge=0, le=50, description="With a site: how many of its latest audit runs to list (score, change, findings, failures). 0 = none.")
+
+
+class SitesSeoRunArgs(BaseModel):
+    site: str = Field(..., min_length=1, max_length=200, description="Site id, name or host.")
+    wait_s: float = Field(0, ge=0, le=300, description="Seconds to wait for the audit to finish (max 300). 0 returns at once with the audit queued.")
+
+
+class SitesSeoBaselineArgs(BaseModel):
+    site: str = Field(..., min_length=1, max_length=200, description="Site id, name or host.")
 
 
 class FaustusAttentionArgs(BaseModel):
@@ -397,6 +415,54 @@ def run_site_history(services: Services, args: SiteHistoryArgs) -> dict:
     return services.sites.history(site, since, until)
 
 
+def _seo_keys(item: dict[str, Any]) -> dict[str, Any]:
+    return {k: v for k, v in item.items() if v not in (None, "", [], {})}
+
+
+def run_sites_seo(services: Services, args: SitesSeoArgs) -> dict:
+    now = services.clock()
+    if args.site:
+        site = _resolve_site(services, args.site)
+        out: dict[str, Any] = {"site": _seo_keys(services.seo.status_one(site, now))}
+        if args.history:
+            out["history"] = services.seo.history(site, args.history)["runs"]
+        if out["site"]["state"] == "off":
+            out["note"] = "This site is not audited: set seo_interval_h with sites_watch (for example 24 for a daily audit)."
+        return out
+    items = [i for i in services.seo.status_all(now) if i["state"] != "off"]
+    drops = [f"{i['name']}: {i['score']:g} ({i['delta_previous']:+g})" for i in items if (i.get("delta_previous") or 0) < 0]
+    return {"summary": services.seo.summary(), "sites": [_seo_keys({k: i.get(k) for k in (
+                "id", "name", "url", "state", "interval_h", "score", "delta_previous", "baseline_score", "delta_baseline", "counts", "critical",
+                "new_critical", "last_run", "next_run", "error")}) for i in items],
+            "dropped_since_previous": drops, "critical_open": [f"{i['name']}: {c['title']}" for i in items for c in i.get("critical") or []][:20],
+            "note": None if items else "No site is audited yet: set seo_interval_h on a watched site with sites_watch."}
+
+
+def run_sites_seo_run(services: Services, args: SitesSeoRunArgs) -> dict:
+    site = _resolve_site(services, args.site)
+    if not services.seo.enabled:
+        raise ValueError("The SEO/GEO watch is switched off (CASSANDRA_SEO=0).")
+    since = services.clock()
+    queued = services.seo.request(site)
+    if not services.seo.running:
+        services.seo.start()
+    deadline = time.monotonic() + args.wait_s
+    while args.wait_s and time.monotonic() < deadline:
+        last = services.seo.last_run(site["id"])
+        if not services.seo.busy(site["id"]) and last is not None and last["ts"] >= since:
+            break
+        time.sleep(0.5)
+    status = services.seo.status_one(site)
+    done = status.get("last_run_ts") is not None and status["last_run_ts"] >= since and status["state"] != "running"
+    return {"queued": queued, "finished": done, "site": _seo_keys({k: v for k, v in status.items() if k != "last_run_ts"}),
+            "note": None if done else "The audit runs in the background (it can take minutes); ask again with sites_seo."}
+
+
+def run_sites_seo_baseline(services: Services, args: SitesSeoBaselineArgs) -> dict:
+    site = _resolve_site(services, args.site)
+    return {"ok": True, "baseline": services.seo.rebaseline(site), "note": "The latest successful audit is now the reference for this site."}
+
+
 def run_sites_watch(services: Services, args: SitesWatchArgs) -> dict:
     raw = args.model_dump(exclude_none=True)
     action = raw.pop("action")
@@ -418,6 +484,7 @@ def run_sites_watch(services: Services, args: SitesWatchArgs) -> dict:
         raise ValueError("That site is already watched; use action 'edit'.")
     site, created = store.upsert(raw)
     services.sites.wake()
+    services.seo.wake()
     return {"ok": True, "created": created, "site": services.sites.status_one(site),
             "note": "Saved in data/sites.json; the first check runs within seconds." if created else "Saved in data/sites.json."}
 
@@ -436,6 +503,9 @@ TOOLS: list[Tool] = [
     Tool("faustus_farm", "What is Faustus running now? Runs, sub-agents, jobs, budget / ¿Qué está haciendo Faustus ahora?\nEvery chat turn in flight with the sub-agents it started, dispatched jobs and their workers, a night shift, workflow runs and scheduled tasks: title, kind, model, state, how long, progress. Plus the period budget (window used against pace, GPU seconds today, failure breaker, provider cooldowns). Names only, never message text. Says why when it cannot read it (no token, refused, Faustus down or too old).\nSinónimos: qué está corriendo, agentes en marcha, subagentes, trabajos, turno en curso, presupuesto, ritmo, GPU hoy, breaker, cooldown, Faustus ocupado.", FaustusFarmArgs, _ann(True), run_faustus_farm),
     Tool("sites_status", "Are my public websites up? Latency, certificate and domain days left / ¿Están mis webs públicas bien?\nEvery watched site (or one): up/down, HTTP status, latency, redirect, certificate days left and issuer, DNS answers, domain registration expiry (RDAP), last change, open incident, warnings.\nSinónimos: web caída, mi página, certificado, caducidad, dominio, TLS, SSL, https, renovación, disponibilidad.", SitesStatusArgs, _ann(True), run_sites_status),
     Tool("site_history", "Up/down history of one public website: changes, uptime, latency / Historial de una web pública\nState changes (down, up, certificate renewed or expiring, DNS answers changed), uptime percentage, latency avg/p95/max with a series, and its incidents with cause.\nSinónimos: historial de la web, cuándo estuvo caída, disponibilidad, uptime, latencia, certificado renovado.", SiteHistoryArgs, _ann(True), run_site_history),
+    Tool("sites_seo", "SEO/GEO score of my public websites and how it drifted / Puntuación SEO/GEO de mis webs y su deriva\nThe scheduled audit (Vitruvius's site_audit) of the sites that opted in: score now, change since the previous run and since the baseline, score per category, critical and high findings, findings that appeared or were resolved, failed runs with their cause, next run. With a site and history, its latest runs.\nSinónimos: SEO, GEO, posicionamiento, auditoría web, puntuación, deriva, ha bajado, hallazgos críticos, rastreadores de IA, portfolio.", SitesSeoArgs, _ann(True), run_sites_seo),
+    Tool("sites_seo_run", "Audit a public website's SEO/GEO now / Auditar ahora el SEO/GEO de una web\nAsks the scheduler for an audit of one watched site right now (it can take minutes: wait_s waits for the result, 0 returns at once). Compares with the run before and raises the alerts when the score dropped or a critical finding appeared. Only when the user asks.\nSinónimos: auditar ahora, lanzar auditoría, repasar el SEO, comprobar la web, nueva medición.", SitesSeoRunArgs, _ann(False, False, False), run_sites_seo_run),
+    Tool("sites_seo_baseline", "Accept the latest SEO/GEO audit as the reference / Aceptar la última auditoría como referencia\nMoves the baseline of one site to its latest successful audit (after a fix or an intended change). Drift against the baseline restarts from there; the history stays. Only when the user asks.\nSinónimos: nueva referencia, línea base, aceptar el estado actual, reiniciar la comparación.", SitesSeoBaselineArgs, _ann(False, False, True), run_sites_seo_baseline),
     Tool("svc_restart", "Restart or start one service now (only when the user asks) / Reiniciar o arrancar un servicio ahora\nUses its restart command, the Hoard Hub launcher or the app's launch hint; recorded in the open incident. Refuses when another program holds the port.\nSinónimos: reiniciar, arrancar, levantar, relanzar, volver a encender, restart, start.", RestartArgs, _ann(False, False, False), run_restart),
     Tool("svc_watch", "Add or edit a watched service: URL, health path, logs, restart policy / Añadir o editar un servicio vigilado\nSaved in data/services.json. An existing id (also a discovered app or built-in) is edited; restart.enabled turns on automatic restarts (opt-in, max_per_hour). Only when the user asks.\nSinónimos: vigilar, monitorizar, añadir servicio, nuevo servicio, política de reinicio, logs de un servicio.", WatchArgs, _ann(False, False, True), run_watch),
     Tool("sites_watch", "Add, edit or remove a watched public website / Añadir, editar o quitar una web pública vigilada\nSaved in data/sites.json: url, expected status, keyword, check interval, pause. Removing keeps its history. Changes the watch list: only when the user asks.\nSinónimos: vigilar una web, añadir sitio, quitar sitio, monitorizar página, palabra clave, intervalo de comprobación.", SitesWatchArgs, _ann(False, False, False), run_sites_watch),

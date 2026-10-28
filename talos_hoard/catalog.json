@@ -2023,6 +2023,109 @@
     "module": "services"
   },
   {
+    "name": "sites_seo",
+    "description": "SEO/GEO score of my public websites and how it drifted / Puntuación SEO/GEO de mis webs y su deriva\nThe scheduled audit (Vitruvius's site_audit) of the sites that opted in: score now, change since the previous run and since the baseline, score per category, critical and high findings, findings that appeared or were resolved, failed runs with their cause, next run. With a site and history, its latest runs.\nSinónimos: SEO, GEO, posicionamiento, auditoría web, puntuación, deriva, ha bajado, hallazgos críticos, rastreadores de IA, portfolio.",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "site": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Site id, name or host; omit for every site that is audited or has been.",
+          "title": "Site"
+        },
+        "history": {
+          "default": 0,
+          "description": "With a site: how many of its latest audit runs to list (score, change, findings, failures). 0 = none.",
+          "maximum": 50,
+          "minimum": 0,
+          "title": "History",
+          "type": "integer"
+        }
+      },
+      "title": "SitesSeoArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
+    "name": "sites_seo_run",
+    "description": "Audit a public website's SEO/GEO now / Auditar ahora el SEO/GEO de una web\nAsks the scheduler for an audit of one watched site right now (it can take minutes: wait_s waits for the result, 0 returns at once). Compares with the run before and raises the alerts when the score dropped or a critical finding appeared. Only when the user asks.\nSinónimos: auditar ahora, lanzar auditoría, repasar el SEO, comprobar la web, nueva medición.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "site": {
+          "description": "Site id, name or host.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Site",
+          "type": "string"
+        },
+        "wait_s": {
+          "default": 0,
+          "description": "Seconds to wait for the audit to finish (max 300). 0 returns at once with the audit queued.",
+          "maximum": 300,
+          "minimum": 0,
+          "title": "Wait S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "site"
+      ],
+      "title": "SitesSeoRunArgs",
+      "type": "object",
+      "x-timeout-s": 400.0
+    },
+    "module": "services",
+    "x-timeout-s": 400.0
+  },
+  {
+    "name": "sites_seo_baseline",
+    "description": "Accept the latest SEO/GEO audit as the reference / Aceptar la última auditoría como referencia\nMoves the baseline of one site to its latest successful audit (after a fix or an intended change). Drift against the baseline restarts from there; the history stays. Only when the user asks.\nSinónimos: nueva referencia, línea base, aceptar el estado actual, reiniciar la comparación.",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "site": {
+          "description": "Site id, name or host.",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Site",
+          "type": "string"
+        }
+      },
+      "required": [
+        "site"
+      ],
+      "title": "SitesSeoBaselineArgs",
+      "type": "object"
+    },
+    "module": "services"
+  },
+  {
     "name": "svc_restart",
     "description": "Restart or start one service now (only when the user asks) / Reiniciar o arrancar un servicio ahora\nUses its restart command, the Hoard Hub launcher or the app's launch hint; recorded in the open incident. Refuses when another program holds the port.\nSinónimos: reiniciar, arrancar, levantar, relanzar, volver a encender, restart, start.",
     "annotations": {
@@ -2362,6 +2465,36 @@
           "default": null,
           "description": "Registrable domain for the RDAP expiry lookup when the automatic guess is wrong (e.g. example.co.uk).",
           "title": "Domain"
+        },
+        "seo_interval_h": {
+          "anyOf": [
+            {
+              "maximum": 720,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Hours between scheduled SEO/GEO audits of this site (1 to 720; 24 = daily). 0 turns the audit off. The audit is Vitruvius's site_audit.",
+          "title": "Seo Interval H"
+        },
+        "seo_drop_points": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Score points below the recent best that raise a drop alert (default 2). 0 returns to the default.",
+          "title": "Seo Drop Points"
         }
       },
       "required": [

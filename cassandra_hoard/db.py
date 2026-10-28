@@ -127,6 +127,25 @@ MIGRATIONS: list[str] = [
       warned TEXT NOT NULL DEFAULT '{}'
     );
     """,
+    # 4: SEO / GEO audits of the public sites - one row per run (a failed run keeps its cause), with the drift against the run before
+    """
+    CREATE TABLE seo_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      site TEXT NOT NULL,
+      ts REAL NOT NULL,
+      ok INTEGER NOT NULL,
+      error_kind TEXT NOT NULL DEFAULT '',
+      error TEXT NOT NULL DEFAULT '',
+      score REAL,
+      categories TEXT NOT NULL DEFAULT '{}',
+      findings TEXT NOT NULL DEFAULT '[]',
+      counts TEXT NOT NULL DEFAULT '{}',
+      baseline INTEGER NOT NULL DEFAULT 0,
+      drift TEXT NOT NULL DEFAULT '{}',
+      ms INTEGER
+    );
+    CREATE INDEX seo_runs_site_ts ON seo_runs(site, ts);
+    """,
 ]
 
 
