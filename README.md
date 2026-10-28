@@ -186,7 +186,7 @@ Retired Hoard identities may remain registered as **non-launchable compatibility
 
 ## Development and verification
 
-Install `pytest pytest-asyncio` in the same environment. Run `python -m pytest tests -q`. `legacy_tests/` retains the incorporated engines' regression tests; run each engine's suite separately where helper modules have identical names. `scripts/qa_server.py` starts a synthetic instance with fake capture/audio and offline network engines. `scripts/verify_mcp.py --data-dir <QA-data>` checks the real stdio transport against that instance.
+Install `pytest pytest-asyncio` in the same environment. Run `python -m pytest tests -q`. `legacy_tests/` retains the incorporated engines' regression tests; run each engine's suite separately where helper modules have identical names. `scripts/qa_server.py` starts a synthetic instance with fake capture/audio and offline network engines. `scripts/verify_mcp.py --data-dir <QA-data>` checks the real stdio transport against that instance. `scripts/differential/funes_absorption/` holds the differential test of the Funes absorption: the last Funes commit before the move and Talos's Activity and Audio modules answer the same 130 recorded tool calls and the traces are compared exactly (`run.py`, see its README and `RESULT.md`; it needs a checkout of that commit and of the differential kit, so it is not part of `pytest`).
 
 UI sources live under `ui/`; each has its own lockfile. Run `npm ci` and `npm run build` inside the relevant UI directory. Built assets ship with the repository. `scripts/build_catalog.py` rebuilds the static native tool definitions without opening histories or starting engines.
 
