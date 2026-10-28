@@ -88,7 +88,8 @@ def list_sessions(request: Request, q: str = "", kind: str | None = None, tag: s
 def detail(request: Request, session_id: str):
     svc = services(request)
     session = require_session(svc, session_id)
-    return {**session, "segments": svc.sessions.segments(session_id), "has_minutes": svc.minutes.store.get(session_id) is not None}
+    return {**session, "segments": svc.sessions.segments(session_id), "has_minutes": svc.minutes.store.get(session_id) is not None,
+            "has_chapters": svc.chapters.get(session_id) is not None}
 
 
 @router.get("/{session_id}/minutes")
@@ -100,7 +101,8 @@ def get_minutes(request: Request, session_id: str, format: str = Query("json")):
         minutes = svc.minutes.get(session_id)
         if minutes is None:
             raise HTTPException(404, "This session has no minutes yet.")
-        return PlainTextResponse(render_minutes_md(session, minutes), media_type=MIME["md"])
+        stored = svc.chapters.get(session_id)
+        return PlainTextResponse(render_minutes_md(session, minutes, chapters=stored["chapters"] if stored else None), media_type=MIME["md"])
     if format != "json":
         raise HTTPException(400, "format must be json or md")
     return svc.minutes.view(session_id)
@@ -119,6 +121,29 @@ def make_minutes(request: Request, session_id: str, body: MinutesBody | None = N
         return {**svc.minutes.view(session_id), "result": result["status"]}
     queued = svc.minutes.schedule(session_id, regenerate=body.regenerate)
     return {**svc.minutes.view(session_id), "queued": queued}
+
+
+@router.get("/{session_id}/chapters")
+def get_chapters(request: Request, session_id: str):
+    """The chapters of a session (`chapters` is null until written) with the generation state and whether a model exists."""
+    svc = services(request)
+    require_session(svc, session_id)
+    return svc.chapters.view(session_id)
+
+
+@router.post("/{session_id}/chapters", status_code=202)
+def make_chapters(request: Request, session_id: str, body: MinutesBody | None = None):
+    """Write (or rewrite) the chapters with the global model. Queued by default; poll GET until `generating` is false."""
+    body = body or MinutesBody()
+    svc = services(request)
+    session = require_session(svc, session_id)
+    if session["status"] != "done":
+        raise HTTPException(409, "The session is not transcribed yet.")
+    if body.wait:
+        result = svc.chapters.generate(session_id, regenerate=body.regenerate)
+        return {**svc.chapters.view(session_id), "result": result["status"], "detail": result.get("detail", "")}
+    queued = svc.chapters.schedule(session_id, regenerate=body.regenerate)
+    return {**svc.chapters.view(session_id), "queued": queued}
 
 
 @router.patch("/{session_id}")
@@ -200,7 +225,9 @@ def export(request: Request, session_id: str, format: str = Query("txt", alias="
         raise HTTPException(400, f"format must be one of {', '.join(FORMATS)}")
     svc = services(request)
     session = require_session(svc, session_id)
-    text = render(format, session, svc.sessions.segments(session_id), svc.minutes.get(session_id) if format == "md" else None)
+    stored = svc.chapters.get(session_id)
+    text = render(format, session, svc.sessions.segments(session_id), svc.minutes.get(session_id) if format == "md" else None,
+                  stored["chapters"] if stored and format in ("md", "txt") else None)
     return PlainTextResponse(text, media_type=MIME[format], headers={"Content-Disposition": f'attachment; filename="{session_id}.{format}"'})
 
 

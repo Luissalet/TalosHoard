@@ -1,5 +1,34 @@
 # Talos's Hoard
 
+**Audio: echo clean-up, meeting chapters and a transcription bench.** With speakers
+on, the microphone hears the other side again and the final pass used to write the
+same sentence twice, the second copy as "yo". After transcribing, the microphone
+lines that only sound while the system track sounds (60 % or more of their active
+frames, at least twice as quiet there) or that repeat word for word what the other
+track said within two seconds are dropped; the session stores how many (`stats.final.echo`).
+Setting **Quitar el eco del micrófono** (on by default); `scribe_echo_check` lists the
+echo lines of an existing session and, with `apply: true`, removes them.
+Meetings and interviews of three minutes or more are split into 2-12 **chapters**
+by one plain call (no tools) to the global model: each start is snapped to the start
+of a real transcript line, sorted, deduplicated and the first one moved to the first
+line; titles are 2-6 words in the language of the transcript. Chapters appear in the
+session page (click to jump), as ticks on the waveform, in the minutes and in the
+MD/TXT exports. Setting **Dividir en capítulos al terminar**; MCP `scribe_chapters`
+(`regenerate` asks again), HTTP `GET/POST /audio/api/sessions/{id}/chapters`.
+**Banco de transcripción** (Ajustes → Audio, MCP `scribe_bench` / `scribe_bench_status`,
+HTTP `/audio/api/bench`) runs four recordings with a known script (overlapping voices,
+speaker echo, background music, silence) through the configured engine, the
+hallucination filter, echo clean-up and track merge, scores found words, correct side,
+leaked echo, invented lines and seconds, compares with the same output without echo
+clean-up and stores the result in `<audio data>/bench-results.json`. Measured with
+faster-whisper small on CPU int8: call 90 % of words found, 100 % correct side, 0 leaked,
+0 invented; call with speaker echo 90 % found, 100 % correct side, 0 leaked (23 echo lines
+removed; without clean-up 18 leaked and 46 lines instead of 20); music 99 %; silence 0
+lines. The catalog is now **101 tools** (four new: `scribe_chapters`, `scribe_echo_check`,
+`scribe_bench`, `scribe_bench_status`). The fixtures are third-party recordings released
+as CC0 and the method follows an MIT-licensed project; see
+`funes_hoard/audio_memory/NOTICE-meeting-recorder.md`.
+
 In **Audio → Session**, **Buscar en esta sesión** opens search for that exact
 session ID, including when titles repeat. Text, kind and date filters combine
 with that scope; searching all sessions removes only the scope and keeps the
@@ -57,7 +86,7 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 | Screen | Screenshots, OCR, visual and full-text search, similar frames, timeline, application activity, exclusions, private mode, import and folder watching, pinned frames, exports and retention |
 | Clipboard | Text and image history, type detection, OCR, search, favourites, edit/delete/restore, copy and bundles |
 | Activity | Foreground windows, idle/lock handling, recent files, Git commits, projects, classifications, privacy rules, summaries, exports and cross-module recall |
-| Audio | Microphone/system recording, file import, streaming transcripts, search, notes, tags, exports, minutes, shared speech-to-text and GPU/CPU fallback |
+| Audio | Microphone/system recording, file import, streaming transcripts, echo clean-up between tracks, search, notes, tags, exports, minutes, meeting chapters, transcription bench, shared speech-to-text and GPU/CPU fallback |
 | Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, notifications and restart policies |
 | Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, ZIP splitting and model-backup management |
 
@@ -127,7 +156,7 @@ On activation, the native engine resumes its normal behaviour, including its sav
 
 ## API and MCP
 
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 97 tools: the original 91 native tools, three saved-selection tools, `clip_compare` and `talos_modules` and `talos_set_module`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
+`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 101 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, and four audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`). `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
 
 Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
 

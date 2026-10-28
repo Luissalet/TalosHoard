@@ -255,6 +255,15 @@ class SessionStore:
                 raise
         return stored
 
+    def delete_segments(self, session_id: str, segment_ids: list[int]) -> int:
+        """Remove the given segments of one session (and their search entries); returns how many were removed."""
+        removed = 0
+        with self.db.lock:
+            for segment_id in segment_ids:
+                self.db.conn.execute("DELETE FROM segments_fts WHERE segment_id = ?", (segment_id,))
+                removed += self.db.conn.execute("DELETE FROM segments WHERE id = ? AND session_id = ?", (segment_id, session_id)).rowcount
+        return removed
+
     def segments(self, session_id: str, from_s: float | None = None, to_s: float | None = None, limit: int | None = None) -> list[dict]:
         where, params = ["session_id = ?"], [session_id]
         if from_s is not None:

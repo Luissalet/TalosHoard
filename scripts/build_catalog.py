@@ -28,7 +28,7 @@ async def main():
         tools.extend({**t, "module": "disk"} for t in CATALOG)
     names = [t["name"] for t in tools]
     for tool in tools:
-        if tool["name"] in ("scribe_minutes", "minutes_get"):
+        if tool["name"] in ("scribe_minutes", "minutes_get", "scribe_chapters"):
             tool["x-timeout-s"] = 1800.0
             tool["inputSchema"]["x-timeout-s"] = 1800.0
     assert len(names) == len(set(names)), "Duplicate tool names"

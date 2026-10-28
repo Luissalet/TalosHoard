@@ -66,6 +66,16 @@ MIGRATIONS: list[str] = [
       stats TEXT NOT NULL DEFAULT '{}'
     );
     """,
+    # 4: chapters of a meeting (start/title list proposed by the model and cleaned by plain code), one set per session
+    """
+    CREATE TABLE chapters (
+      session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
+      items TEXT NOT NULL DEFAULT '[]',
+      model TEXT NOT NULL DEFAULT '',
+      created_at REAL NOT NULL,
+      stats TEXT NOT NULL DEFAULT '{}'
+    );
+    """,
 ]
 
 

@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import { useEditorSnapshot, useTurnRefresh } from "../copilot.js";
 import { changedFields } from "../copilot-context.js";
 import { useApp } from "../App.jsx";
+import Chapters, { useChapters } from "../components/Chapters.jsx";
 import Minutes from "../components/Minutes.jsx";
 import Player from "../components/Player.jsx";
 import Transcript from "../components/Transcript.jsx";
@@ -35,6 +36,7 @@ export default function Sesion() {
   const [time, setTime] = useState(0);
   const [confirm, setConfirm] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
+  const [chaptersState, setChaptersState] = useChapters(id, !!session && session.status === "done");
 
   const load = useCallback(() => api.session(id).then(setSession).catch(() => setMissing(true)), [id]);
   useEffect(() => { load(); }, [load]);
@@ -103,11 +105,15 @@ export default function Sesion() {
         {session.stats && session.stats.final && (session.stats.final.skipped_silent > 0 || session.stats.final.dropped > 0) && (
           <span className="help">· {session.stats.final.skipped_silent} fragmentos en silencio · {session.stats.final.dropped} líneas descartadas como ruido</span>
         )}
+        {session.stats && session.stats.final && session.stats.final.echo && session.stats.final.echo.removed > 0 && (
+          <span className="help" title={(session.stats.final.echo.texts || []).join(" | ")}>· {session.stats.final.echo.removed} líneas de eco del micrófono eliminadas</span>
+        )}
       </div>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="grid gap-4">
-          {session.status === "done" && <Player sessionId={id} duration={session.duration_s} seekTo={seek} onTime={setTime} />}
+          {session.status === "done" && <Player sessionId={id} duration={session.duration_s} seekTo={seek} onTime={setTime} chapters={chaptersState && chaptersState.chapters} />}
           {session.status === "processing" && <div className="banner banner-processing">Transcribiendo la sesión completa… el texto provisional se sustituirá al terminar.</div>}
+          <Chapters sessionId={id} state={chaptersState} setState={setChaptersState} onSeek={(t) => setSeek({ t })} notify={notify} time={time} />
           <Minutes sessionId={id} sessionDone={session.status === "done"} onSeek={(t) => setSeek({ t })} notify={notify} />
           <section className="panel-white">
             <div className="mb-2 flex items-center justify-between">

@@ -12,6 +12,8 @@ from .config import Config
 from .db import Database
 from .events import EventBus
 from .importer import Importer, ffmpeg_path, pyav_available
+from .bench import BenchJobs
+from .chapters import ChaptersService
 from .minutes import MinutesService
 from .pipeline import Pipeline
 from .recorder import Recorder
@@ -63,6 +65,8 @@ class Services:
         self.recorder = Recorder(self.backend, self.settings, self.sessions, self.transcriber, self.worker, self.bus)
         self.recorder.on_stopped = self.pipeline.enqueue_final
         self.minutes = MinutesService(self.db, self.sessions, self.settings, link_provider, emit=emit if emit is not None else family.emit)
+        self.chapters = ChaptersService(self.db, self.sessions, self.settings, link_provider)
+        self.bench = BenchJobs(self.worker, lambda: self.transcriber, lambda: self.settings.get().vad_sensitivity, config.data_dir)
         self.pipeline.on_done = self._transcribed
 
     # ---------- the family's speech-to-text service ----------
@@ -89,6 +93,8 @@ class Services:
         """A final pass finished: the old minutes (if any) describe replaced text, so write new ones when wanted."""
         self.minutes.discard(session_id)
         self.minutes.after_transcription(session_id)
+        self.chapters.discard(session_id)
+        self.chapters.after_transcription(session_id)
 
     # ---------- lifecycle ----------
     def start(self) -> None:
@@ -109,6 +115,7 @@ class Services:
                 pass
         self.worker.stop()
         self.minutes.close()
+        self.chapters.close()
         if isinstance(self.transcriber, WhisperTranscriber):
             self.transcriber.engine.close()
         if self._fake_engine is not None:

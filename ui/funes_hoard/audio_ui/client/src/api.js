@@ -40,6 +40,11 @@ export const api = {
     if (!response.ok) throw new Error(`Error ${response.status}`);
     return response.text();
   },
+  chapters: (id) => request("GET", `/audio/api/sessions/${id}/chapters`),
+  makeChapters: (id, body) => request("POST", `/audio/api/sessions/${id}/chapters`, { body }),
+  bench: () => request("GET", "/audio/api/bench"),
+  startBench: (body) => request("POST", "/audio/api/bench", { body }),
+  benchJob: (jobId) => request("GET", `/audio/api/bench/${jobId}`),
   peaks: (id, n = 400) => request("GET", `/audio/api/sessions/${id}/peaks`, { params: { n } }),
   search: (params) => request("GET", "/audio/api/search", { params }),
   tags: () => request("GET", "/audio/api/tags"),
