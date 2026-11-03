@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es" data-hoard-app="talos">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Talos’s Hoard · Reuniones y procedimientos</title>
+  <link rel="icon" href="/static/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/static/hoard-theme.css">
+  <link rel="stylesheet" href="/static/product-theme.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/family.css">
+  <link rel="stylesheet" href="/static/analysis.css">
+  <script type="module" src="/static/analysis.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="wordmark hoard-brand" href="/" aria-label="Inicio"><img src="/static/icon-192.png" alt="" width="42" height="42"><span>Talos’s Hoard</span></a>
+    <nav aria-label="Secciones"><a class="nav-link" href="/" data-i18n="nav_modules">Funciones</a><a class="nav-link current" href="/static/analysis.html" aria-current="page" data-i18n="nav_analysis">Reuniones y procedimientos</a></nav>
+  </aside>
+  <main>
+    <div class="title-row"><div><h1 data-i18n="title">Reuniones y procedimientos</h1><p data-i18n="intro">Clasificación por reglas, sin modelo. Todo es un borrador que una persona o un agente debe revisar.</p></div>
+      <label class="lang">Idioma / Language <select id="lang"><option value="es">Español</option><option value="en">English</option></select></label></div>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-meeting" aria-selected="true" aria-controls="panel-meeting" data-i18n="tab_meeting">Reunión → requisitos y pendientes</button>
+      <button type="button" role="tab" id="tab-procedure" aria-selected="false" aria-controls="panel-procedure" data-i18n="tab_procedure">Pantalla → procedimiento</button>
+    </div>
+    <p id="error" role="alert" hidden></p>
+
+    <section id="panel-meeting" role="tabpanel" aria-labelledby="tab-meeting">
+      <div class="row"><label><span data-i18n="session">Sesión</span> <select id="session"></select></label>
+        <label><span data-i18n="min_conf">Confianza mínima</span> <input id="min-conf" type="number" min="0" max="1" step="0.05" value="0"></label>
+        <button type="button" class="secondary" id="load-meeting" data-i18n="read">Leer</button>
+        <a class="secondary-link" id="export-md" href="#" download="requisitos.md" data-i18n="export_md">Exportar Markdown</a>
+        <a class="secondary-link" id="export-json" href="#" download="requisitos.json" data-i18n="export_json">Exportar JSON</a>
+        <a class="secondary-link" id="export-commitments" href="#" download="compromisos-talos.json" data-i18n="export_commitments">Compromisos firmes (para importar)</a></div>
+      <p id="meeting-summary" class="muted"></p>
+      <div id="meeting-items"></div>
+    </section>
+
+    <section id="panel-procedure" role="tabpanel" aria-labelledby="tab-procedure" hidden>
+      <div class="row"><label><span data-i18n="start">Desde</span> <input id="p-start" value="-30m"></label>
+        <label><span data-i18n="end">Hasta</span> <input id="p-end" value="now"></label>
+        <button type="button" class="secondary" id="load-procedure" data-i18n="draft">Proponer procedimiento</button>
+        <a class="secondary-link" id="p-export" href="#" download="procedimiento.md" data-i18n="export_md">Exportar Markdown</a></div>
+      <p class="muted" data-i18n="p_note">Talos registra ventana en primer plano, portapapeles, capturas y archivos recientes; no registra clics ni pulsaciones. El borrador no ejecuta nada en el ordenador observado y enmascara los valores que parecen secretos.</p>
+      <div id="procedure"></div>
+    </section>
+  </main>
+</body>
+</html>

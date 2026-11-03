@@ -123,6 +123,51 @@ def make_minutes(request: Request, session_id: str, body: MinutesBody | None = N
     return {**svc.minutes.view(session_id), "queued": queued}
 
 
+class LinkBody(BaseModel):
+    item_id: str = Field(..., min_length=1, max_length=64)
+    ref: str = Field(..., min_length=1, max_length=200)
+    ref_kind: str = "deliverable"
+    engagement: str = Field("", max_length=200)
+
+
+@router.get("/{session_id}/requirements")
+def get_requirements(request: Request, session_id: str, format: str = Query("json", pattern="^(json|md|commitments)$"), kinds: str = "", min_confidence: float = Query(0.0, ge=0, le=1),
+                     language: str = Query("auto", pattern="^(auto|es|en)$"), locale: str = Query("es", pattern="^(es|en)$"), engagement_ref: str | None = None):
+    """Commitments, proposals, open questions, decisions and requirements of a meeting (plain rules, no model); format md is a Markdown report."""
+    svc = services(request)
+    require_session(svc, session_id)
+    wanted = [k for k in kinds.split(",") if k] or None
+    try:
+        if format == "md":
+            text = svc.requirements.export(session_id, "md", locale=locale, lang=language, min_confidence=min_confidence, kinds=wanted, engagement_ref=engagement_ref)
+            return PlainTextResponse(text, media_type=MIME["md"])
+        if format == "commitments":
+            return svc.requirements.importable_commitments(session_id, lang=language, min_confidence=min_confidence)
+        return svc.requirements.analyze(session_id, lang=language, min_confidence=min_confidence, kinds=wanted, engagement_ref=engagement_ref)
+    except (LookupError, ValueError) as error:
+        raise _lookup(error) from error
+
+
+@router.post("/{session_id}/requirements/links")
+def link_requirement(request: Request, session_id: str, body: LinkBody):
+    """Tie a requirement or decision to a free external reference (deliverable or decision id of an engagement)."""
+    svc = services(request)
+    require_session(svc, session_id)
+    try:
+        return svc.requirements.link(session_id, body.item_id, body.ref, body.ref_kind, body.engagement)
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+
+
+@router.delete("/{session_id}/requirements/links")
+def unlink_requirement(request: Request, session_id: str, item_id: str, ref: str):
+    svc = services(request)
+    require_session(svc, session_id)
+    return svc.requirements.link(session_id, item_id, ref, remove=True)
+
+
 @router.get("/{session_id}/chapters")
 def get_chapters(request: Request, session_id: str):
     """The chapters of a session (`chapters` is null until written) with the generation state and whether a model exists."""

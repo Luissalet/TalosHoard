@@ -3266,6 +3266,173 @@
     "x-timeout-s": 1800.0
   },
   {
+    "name": "scribe_requirements",
+    "description": "Commitments, proposals, open questions, decisions and requirements of a meeting, by plain rules. Requisitos y pendientes de la reunión.\nClassifies every sentence of a transcript with Spanish and English linguistic rules (modals, conditionals, interrogatives, explicit decision markers), no model: commitment (firm, with owner and due day when the words say them), proposal (podríamos, could, maybe, intentaré, conditionals: never firm), question (open, with who must answer), decision (agreed) and requirement (what the deliverable must do). Each item has the exact cue, the rule, a confidence and the segment (start/end seconds and transcript text) to play back. format md returns a Markdown report; format commitments returns only the firm commitments in the shape other apps import, with the rest as rejected and why. Deterministic and read-only.\nSinónimos: compromisos de la reunión, preguntas abiertas, qué hay que hacer, qué se decidió, requisitos del cliente, propuestas, pendientes de la reunión, acta de requisitos",
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "format": {
+          "default": "json",
+          "description": "json: every item; md: a Markdown report as text; commitments: only the firm commitments in the shape other apps import, plus the rejected ones with the reason.",
+          "enum": [
+            "json",
+            "md",
+            "commitments"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "kinds": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "commitment",
+                  "proposal",
+                  "question",
+                  "decision",
+                  "requirement"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Only these kinds. Empty: all five.",
+          "title": "Kinds"
+        },
+        "min_confidence": {
+          "default": 0.0,
+          "description": "Drop items below this confidence.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Confidence",
+          "type": "number"
+        },
+        "language": {
+          "default": "auto",
+          "description": "Rule set to apply. auto applies both, so mixed Spanish/English meetings work.",
+          "enum": [
+            "auto",
+            "es",
+            "en"
+          ],
+          "title": "Language",
+          "type": "string"
+        },
+        "locale": {
+          "default": "es",
+          "description": "Language of the Markdown headings (format md).",
+          "enum": [
+            "es",
+            "en"
+          ],
+          "title": "Locale",
+          "type": "string"
+        },
+        "engagement_ref": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Keep only the items linked to this engagement or reference id.",
+          "title": "Engagement Ref"
+        }
+      },
+      "required": [
+        "session_id"
+      ],
+      "title": "RequirementsArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
+    "name": "scribe_requirement_link",
+    "description": "Tie a requirement or decision of a meeting to a deliverable or decision id of an engagement. Vincular requisito.\nStores a free external reference (ticket, document, clause) for an item id from scribe_requirements; remove=true deletes it. Only requirements and decisions can be linked. Idempotent. No CRM: the reference is just text.\nSinónimos: vincular requisito, enlazar con entregable, asociar decisión, referencia del encargo",
+    "annotations": {
+      "readOnlyHint": false,
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false
+    },
+    "inputSchema": {
+      "properties": {
+        "session_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Session Id",
+          "type": "string"
+        },
+        "item_id": {
+          "description": "The id of a requirement or decision from scribe_requirements.",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Item Id",
+          "type": "string"
+        },
+        "ref": {
+          "description": "Free external id of the deliverable or decision it belongs to (a ticket, a document, a contract clause).",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "ref_kind": {
+          "default": "deliverable",
+          "enum": [
+            "deliverable",
+            "decision"
+          ],
+          "title": "Ref Kind",
+          "type": "string"
+        },
+        "engagement": {
+          "default": "",
+          "description": "Free id of the engagement (optional).",
+          "maxLength": 200,
+          "title": "Engagement",
+          "type": "string"
+        },
+        "remove": {
+          "default": false,
+          "description": "Remove this link instead of adding it.",
+          "title": "Remove",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "session_id",
+        "item_id",
+        "ref"
+      ],
+      "title": "RequirementLinkArgs",
+      "type": "object"
+    },
+    "module": "audio"
+  },
+  {
     "name": "scribe_echo_check",
     "description": "Find (and optionally remove) microphone lines that are the other side's audio coming back. Eco.\nIn a two-track recording the speakers play the other side and the microphone hears it again, so the same sentence appears under «yo». Lists those lines: ≥60 % of their sound over system audio and at least twice as quiet, or the same words as the other track within two seconds. apply=true deletes them from the stored transcript (not undoable).\nSinónimos: eco, duplicado, se oye dos veces, lo repite, altavoces, limpiar la transcripción, línea repetida del micrófono.",
     "annotations": {
@@ -3840,6 +4007,100 @@
       "readOnlyHint": false,
       "destructiveHint": false,
       "idempotentHint": false,
+      "openWorldHint": false
+    },
+    "module": "activity"
+  },
+  {
+    "name": "activity_procedure_draft",
+    "description": "Draft a reusable procedure from what was observed on screen. Borrador de procedimiento desde la pantalla.\n\nSegments a range (or a supplied event log) of foreground windows, clipboard clips, screenshots and files into steps (app switches, form fills,\ncopy/paste, clicks), each with its evidence; typed or pasted values become named inputs (secrets masked) and unknowns are listed (intent,\nunseen states). Talos records no clicks or keystrokes. A DRAFT to verify; executes nothing.\nKeywords: procedure, workflow, repeat what I did, document this process, SOP, procedimiento, cómo lo hice, pasos, automatizar lo que hice.\n",
+    "inputSchema": {
+      "properties": {
+        "start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Range start (ISO, \"-30m\", \"hoy\"...). Default: 30 minutes before `end`. At most 6 hours.",
+          "title": "Start"
+        },
+        "end": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Range end; default now.",
+          "title": "End"
+        },
+        "events": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional event log instead of the recorded one: {ts, type focus|click|type|copy|paste|clipboard|screenshot|file|submit, app, title, text, field, target, ref, input_type}.",
+          "title": "Events"
+        },
+        "locale": {
+          "default": "es",
+          "description": "\"es\" or \"en\".",
+          "title": "Locale",
+          "type": "string"
+        },
+        "format": {
+          "default": "json",
+          "description": "\"json\" (steps, inputs, outputs, unknowns) or \"md\" (plain text).",
+          "title": "Format",
+          "type": "string"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "screen": {
+          "default": true,
+          "title": "Screen",
+          "type": "boolean"
+        },
+        "clipboard": {
+          "default": true,
+          "title": "Clipboard",
+          "type": "boolean"
+        }
+      },
+      "title": "activity_procedure_draftArguments",
+      "type": "object"
+    },
+    "annotations": {
+      "readOnlyHint": true,
+      "destructiveHint": false,
+      "idempotentHint": true,
       "openWorldHint": false
     },
     "module": "activity"

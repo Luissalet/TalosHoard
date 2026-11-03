@@ -1,5 +1,37 @@
 # Talos's Hoard
 
+**Meetings: requirements and pending items by plain rules; screen: procedure drafts.** Two
+read-only analyses, deterministic and without a model; neither calls a language model, writes to the
+captured computer or starts a collector.
+*Meeting → requirements* (`scribe_requirements`, HTTP `GET /audio/api/sessions/{id}/requirements`):
+every sentence of a transcribed meeting is cut into clauses and labelled with Spanish and English
+linguistic rules (modals, conditionals, interrogatives, explicit decision markers) as a firm
+**commitment** (owner, counterpart and due day only when the words say them), **proposal**,
+**open question** (with who must answer: a vocative name, the other side, the group or nobody),
+**decision** or **requirement**. Each item reports the exact cue that triggered it (`cue`), the rule
+(`cue_rule`), a confidence and its source segment (`segment` and `playback`: start/end seconds,
+transcript text and the `scribe_transcript` call that reads it; the page plays that stretch of audio).
+"Podríamos", "could", "maybe we", "quizá", "intentaré", "I'll try" and every conditional are proposals,
+never commitments; a negated or pending decision ("todavía no hemos decidido") is not a decision.
+Requirements and decisions are tied to an engagement's deliverable or decision by a free external
+reference (`scribe_requirement_link`, `POST/DELETE /audio/api/sessions/{id}/requirements/links`;
+`engagement_ref` filters by it); the reference is only text, there is no CRM. Export with `format`
+`md` (Markdown report, headings in `es` or `en`) or `json`; `format: commitments` returns only the
+firm commitments in the `talos.commitment/1` shape that People's Hoard imports
+(`commitments_import_talos`), with everything else as `rejected` and the reason.
+*Screen → procedure* (`activity_procedure_draft`, HTTP `POST /activity/api/procedure/draft`): the
+foreground windows, clipboard clips, screenshots and recent files of a range (up to six hours; or an
+event log you supply, which may also carry clicks and typed text) are segmented into steps (app
+switches, form fills, copy/paste between apps, clicks, files). Each step keeps its evidence (the
+events and the closest screenshot), the values typed or pasted become named inputs (values that look
+like secrets are masked everywhere in the output), copied-and-pasted values and files become
+outputs, and what the log cannot say is listed as unknowns (intent, states never observed, clicks
+without a target, gaps, a paste never seen). Talos records no clicks or keystrokes, so actions inside
+a window are only what the clips and screenshots show. It is a draft for a person or an agent to
+verify; it never executes anything on the captured computer. Both are available in
+`/static/analysis.html` (Spanish or English) and add three tools: the catalog is now **107 tools**
+(105 plus the two module controls).
+
 **Services: scheduled SEO/GEO watch of the public websites.** A site in the **Webs públicas**
 list opts in with `seo_interval_h` (hours between audits, 1 to 720; edit it in the list editor,
 with `sites_watch` or `POST /services/api/sites`). Each audit is one call of the design
@@ -22,7 +54,7 @@ that need a person's judgement are counted apart (`counts.judgement`) and never 
 and an audit that answers `ok: false` is stored as failed with its own cause and hint. If
 Vitruvius is down or the design module is off, the run is stored as failed with that reason and
 nothing else changes. `CASSANDRA_SEO=0`
-switches the watch off. The catalog is now **104 tools** (three new for this watch, four for audio).
+switches the watch off. The catalog was then **104 tools** (three new for this watch, four for audio); see the meetings paragraph above for the current count.
 
 **Audio: echo clean-up, meeting chapters and a transcription bench.** With speakers
 on, the microphone hears the other side again and the final pass used to write the
@@ -182,7 +214,7 @@ On activation, the native engine resumes its normal behaviour, including its sav
 
 ## API and MCP
 
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 104 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, four audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`) and three SEO/GEO watch tools (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`). `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
+`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 107 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, six audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`, `scribe_requirements`, `scribe_requirement_link`), three SEO/GEO watch tools (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`) and `activity_procedure_draft`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
 
 Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
 

@@ -28,6 +28,7 @@ scribe_minutes gives the minutes (acta) of a transcribed session: summary, decis
 minutes_get gives the same minutes in a compact shape for other apps (title, date, attendees, action items with owner and due, summary).
 scribe_import_file turns an audio or video file already on this computer into a session (the original is never moved or deleted); with wait_s it waits for the transcript.
 scribe_chapters gives the chapters of a meeting (start time and short title of each topic, written by the global model and cleaned by code: every start is a real transcript line). Quote them as "capítulo" with their time. status "no_model" means no language model is available; "too_short" means under three minutes.
+scribe_requirements reads a transcribed meeting with plain Spanish and English linguistic rules (no model) and sorts what was said into firm commitments, proposals, open questions (with who must answer), decisions and requirements, each with the exact cue, a confidence and the segment to play back. "podríamos", "could", "maybe", "intentaré" and conditionals are proposals, never commitments. format md gives a Markdown report, format commitments gives only the firm commitments in the exchange shape other apps import (proposals come back as rejected, with the reason). scribe_requirement_link ties a requirement or decision to a deliverable or decision id of an engagement (a free external reference; this is not a CRM).
 scribe_echo_check finds microphone lines that are the other side coming back through the speakers (apply=false only lists them; apply=true removes them from the transcript, which cannot be undone except by re-transcribing).
 scribe_bench measures the configured transcription engine on hard recordings (overlapping speech, echo, music, silence) and returns a job; poll scribe_bench_status. It occupies the transcription lane for a minute or two."""
 
@@ -111,6 +112,25 @@ class ImportFileArgs(BaseModel):
 class ChaptersArgs(BaseModel):
     session_id: str = Field(..., min_length=1, max_length=64)
     regenerate: bool = Field(False, description="Ask the model again even if chapters are stored (the old ones are replaced).")
+
+
+class RequirementsArgs(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=64)
+    format: Literal["json", "md", "commitments"] = Field("json", description="json: every item; md: a Markdown report as text; commitments: only the firm commitments in the shape other apps import, plus the rejected ones with the reason.")
+    kinds: list[Literal["commitment", "proposal", "question", "decision", "requirement"]] | None = Field(None, description="Only these kinds. Empty: all five.")
+    min_confidence: float = Field(0.0, ge=0, le=1, description="Drop items below this confidence.")
+    language: Literal["auto", "es", "en"] = Field("auto", description="Rule set to apply. auto applies both, so mixed Spanish/English meetings work.")
+    locale: Literal["es", "en"] = Field("es", description="Language of the Markdown headings (format md).")
+    engagement_ref: str | None = Field(None, max_length=200, description="Keep only the items linked to this engagement or reference id.")
+
+
+class RequirementLinkArgs(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=64)
+    item_id: str = Field(..., min_length=1, max_length=64, description="The id of a requirement or decision from scribe_requirements.")
+    ref: str = Field(..., min_length=1, max_length=200, description="Free external id of the deliverable or decision it belongs to (a ticket, a document, a contract clause).")
+    ref_kind: Literal["deliverable", "decision"] = "deliverable"
+    engagement: str = Field("", max_length=200, description="Free id of the engagement (optional).")
+    remove: bool = Field(False, description="Remove this link instead of adding it.")
 
 
 class EchoCheckArgs(BaseModel):
@@ -289,6 +309,21 @@ def run_chapters(svc: Services, a: ChaptersArgs):
     return result
 
 
+def run_requirements(svc: Services, a: RequirementsArgs):
+    _require(svc, a.session_id)
+    options = {"lang": a.language, "min_confidence": a.min_confidence, "kinds": a.kinds, "engagement_ref": a.engagement_ref}
+    if a.format == "md":
+        return {"format": "md", "session_id": a.session_id, "text": svc.requirements.export(a.session_id, "md", locale=a.locale, **options)}
+    if a.format == "commitments":
+        return svc.requirements.importable_commitments(a.session_id, lang=a.language, min_confidence=a.min_confidence)
+    return svc.requirements.analyze(a.session_id, **options)
+
+
+def run_requirement_link(svc: Services, a: RequirementLinkArgs):
+    _require(svc, a.session_id)
+    return svc.requirements.link(a.session_id, a.item_id, a.ref, a.ref_kind, a.engagement, a.remove)
+
+
 def run_echo_check(svc: Services, a: EchoCheckArgs):
     from .echo import find_echo
     from .pipeline import load_tracks
@@ -418,6 +453,8 @@ TOOLS: list[Tool] = [
     Tool("transcribe_status", "State and result of a transcription job started with transcribe_file.\nSame answer as transcribe_file; wait_s (max 150) waits for it to finish. Finished jobs are kept for an hour.\nSinónimos: cómo va la transcripción, estado del trabajo, resultado de la transcripción.", TranscribeStatusArgs, _ann(True), run_transcribe_status),
     Tool("transcribe_cancel", "Cancel a transcription job started with transcribe_file (idempotent).\nA finished job is left as it is and its own status returned.\nSinónimos: cancelar la transcripción, parar el trabajo.", TranscribeCancelArgs, _ann(False, False, True), run_transcribe_cancel),
     Tool("scribe_chapters", "Chapters of a meeting: where each topic starts, with a short title. Capítulos.\nWrites (or returns the stored) chapters of a transcribed meeting with the global language model, without tools, and cleans them in code: every start is a real transcript line, sorted, at least a minute apart, 2 to 12 of them, titles of up to six words in the transcript's language. Returns {status, chapters [{t, start_s, title}]}; status: ready | no_model | not_ready | no_speech | too_short (under 3 minutes) | error. regenerate=true replaces the stored ones.\nSinónimos: capítulos, índice de la reunión, por temas, temas de la reunión, marcas de tiempo, de qué se habló y cuándo, dividir la reunión.", ChaptersArgs, _ann(False, False, True), run_chapters),
+    Tool("scribe_requirements", "Commitments, proposals, open questions, decisions and requirements of a meeting, by plain rules. Requisitos y pendientes de la reunión.\nClassifies every sentence of a transcript with Spanish and English linguistic rules (modals, conditionals, interrogatives, explicit decision markers), no model: commitment (firm, with owner and due day when the words say them), proposal (podríamos, could, maybe, intentaré, conditionals: never firm), question (open, with who must answer), decision (agreed) and requirement (what the deliverable must do). Each item has the exact cue, the rule, a confidence and the segment (start/end seconds and transcript text) to play back. format md returns a Markdown report; format commitments returns only the firm commitments in the shape other apps import, with the rest as rejected and why. Deterministic and read-only.\nSinónimos: compromisos de la reunión, preguntas abiertas, qué hay que hacer, qué se decidió, requisitos del cliente, propuestas, pendientes de la reunión, acta de requisitos", RequirementsArgs, _ann(True, False, True), run_requirements),
+    Tool("scribe_requirement_link", "Tie a requirement or decision of a meeting to a deliverable or decision id of an engagement. Vincular requisito.\nStores a free external reference (ticket, document, clause) for an item id from scribe_requirements; remove=true deletes it. Only requirements and decisions can be linked. Idempotent. No CRM: the reference is just text.\nSinónimos: vincular requisito, enlazar con entregable, asociar decisión, referencia del encargo", RequirementLinkArgs, _ann(False, False, True), run_requirement_link),
     Tool("scribe_echo_check", "Find (and optionally remove) microphone lines that are the other side's audio coming back. Eco.\nIn a two-track recording the speakers play the other side and the microphone hears it again, so the same sentence appears under «yo». Lists those lines: ≥60 % of their sound over system audio and at least twice as quiet, or the same words as the other track within two seconds. apply=true deletes them from the stored transcript (not undoable).\nSinónimos: eco, duplicado, se oye dos veces, lo repite, altavoces, limpiar la transcripción, línea repetida del micrófono.", EchoCheckArgs, _ann(False, True, True), run_echo_check),
     Tool("scribe_bench", "Measure the transcription engine on hard recordings (overlap, echo, music, silence). Banco de pruebas.\nRuns the configured engine through the app's own path over four synthetic calls with a known script and scores found words, right side of the call, leaked echo, invented lines and seconds, also without the echo clean-up. Returns {job_id, status}; with wait_s (max 150) waits. Poll scribe_bench_status. It uses the transcription lane for a minute or two.\nSinónimos: banco de transcripción, medir whisper, probar el motor, calidad de la transcripción, evaluar el reconocimiento.", BenchArgs, _ann(False, False, False), run_bench),
     Tool("scribe_bench_status", "State and scores of a transcription bench job, or the last saved result.\nWith job_id: {status, current, done, result}; wait_s (max 150) waits. Without: {running, last}.\nSinónimos: resultado del banco, cómo va la medición, última medición del motor.", BenchStatusArgs, _ann(True), run_bench_status),

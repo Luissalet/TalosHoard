@@ -70,6 +70,8 @@ Source tool definitions and implementations are incorporated in this repository.
 | audio | scribe_echo_check | scribe_echo_check |
 | audio | scribe_bench | scribe_bench |
 | audio | scribe_bench_status | scribe_bench_status |
+| audio | scribe_requirements | scribe_requirements |
+| audio | scribe_requirement_link | scribe_requirement_link |
 | activity | activity_now | activity_now |
 | activity | activity_agents_day | activity_agents_day |
 | activity | activity_where_was_i | activity_where_was_i |
@@ -83,6 +85,7 @@ Source tool definitions and implementations are incorporated in this repository.
 | activity | recall | recall |
 | activity | recall_search | recall_search |
 | activity | sources_status | sources_status |
+| activity | activity_procedure_draft | activity_procedure_draft |
 | disk | disk_drives | disk_drives |
 | disk | disk_scan | disk_scan |
 | disk | disk_status | disk_status |

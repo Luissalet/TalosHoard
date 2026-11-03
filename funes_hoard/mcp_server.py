@@ -298,6 +298,27 @@ def activity_pause(minutes: float = 15) -> dict:
 
 
 @mcp.tool(annotations=_READ)
+def activity_procedure_draft(
+    start: Annotated[Optional[str], Field(description='Range start (ISO, "-30m", "hoy"...). Default: 30 minutes before `end`. At most 6 hours.')] = None,
+    end: Annotated[Optional[str], Field(description="Range end; default now.")] = None,
+    events: Annotated[Optional[list[dict]], Field(description='Optional event log instead of the recorded one: {ts, type focus|click|type|copy|paste|clipboard|screenshot|file|submit, app, title, text, field, target, ref, input_type}.')] = None,
+    locale: Annotated[str, Field(description='"es" or "en".')] = "es",
+    format: Annotated[str, Field(description='"json" (steps, inputs, outputs, unknowns) or "md" (plain text).')] = "json",
+    title: Optional[str] = None,
+    screen: bool = True,
+    clipboard: bool = True,
+) -> dict:
+    """Draft a reusable procedure from what was observed on screen. Borrador de procedimiento desde la pantalla.
+
+    Segments a range (or a supplied event log) of foreground windows, clipboard clips, screenshots and files into steps (app switches, form fills,
+    copy/paste, clicks), each with its evidence; typed or pasted values become named inputs (secrets masked) and unknowns are listed (intent,
+    unseen states). Talos records no clicks or keystrokes. A DRAFT to verify; executes nothing.
+    Keywords: procedure, workflow, repeat what I did, document this process, SOP, procedimiento, cómo lo hice, pasos, automatizar lo que hice.
+    """
+    return _post("/api/agent/activity_procedure_draft", {"start": start, "end": end, "events": events, "locale": locale, "format": format, "title": title, "screen": screen, "clipboard": clipboard})
+
+
+@mcp.tool(annotations=_READ)
 def recall(
     at: Annotated[Optional[str], Field(description='now/ahora, "a las 16:00", "hace 10 minutos", "ayer por la tarde", a weekday name or an ISO date/datetime. Omitted/now also returns `now` (current foreground window).')] = None,
     window_minutes: Annotated[float, Field(description="Minutes either side of `at`.")] = 15,
