@@ -1,0 +1,32 @@
+# Talos's Hoard: ficha para Faustus
+
+## Qué añade esta versión
+- Reuniones a requisitos y pendientes (`scribe_requirements`, `scribe_requirement_link`; REST bajo `/audio/api/sessions/{id}/requirements`).
+- Observación de pantalla a borrador de procedimiento (`activity_procedure_draft`; REST `POST /activity/api/procedure/draft`).
+- Página `/static/analysis.html` (castellano e inglés) con ambas vistas.
+- El catálogo de `/api/agent/tools` pasa a 107 herramientas.
+
+## Reuniones
+- Reglas lingüísticas deterministas, sin modelo, en castellano e inglés: compromiso firme, propuesta, pregunta abierta (con quién debe responder), decisión y requisito.
+- Cada elemento da el indicio exacto (`cue`, `cue_rule`), la confianza y el fragmento de origen con reproducción (inicio, fin, texto).
+- «Podríamos», «could», «maybe we», condicionales y decisiones negadas o pendientes nunca son compromisos firmes.
+- Los requisitos y decisiones se vinculan a un entregable o decisión con una referencia externa libre (no hay CRM).
+- Exporta Markdown, JSON y `commitments` (formato `talos.commitment/1`, que People importa con `commitments_import_talos`).
+
+## Procedimiento desde pantalla
+- Pasos: cambios de aplicación, formularios, copiar y pegar, clics, archivos, cada uno con su evidencia (eventos y captura más cercana).
+- Entradas con nombre; los valores que parecen secretos se enmascaran en toda la salida.
+- Incógnitas explícitas: intención no visible, estados no observados, clics sin elemento, huecos, pegados no vistos.
+- Es solo un borrador: no ejecuta nada en el ordenador observado.
+
+## Límites
+- Talos no registra clics ni pulsaciones; con el registro propio del módulo solo hay ventanas, portapapeles, capturas y archivos. Un registro de eventos aportado puede traer más.
+- Las reglas son heurísticas: pueden fallar con frases largas, ironía o transcripciones con errores; por eso se muestra el indicio.
+- Si se regenera la transcripción, los identificadores de elemento pueden cambiar y los vínculos quedan huérfanos (se listan como tales).
+- La interfaz de audio en React no se ha reconstruido; las vistas nuevas están en `/static/analysis.html`.
+
+## Pruebas
+- `python3 -m pytest -q tests` (incluye `tests/test_meeting_requirements.py`) y `legacy_tests/funes_hoard`.
+
+## Pendientes
+- Ninguno abierto.

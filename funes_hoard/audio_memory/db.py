@@ -76,6 +76,19 @@ MIGRATIONS: list[str] = [
       stats TEXT NOT NULL DEFAULT '{}'
     );
     """,
+    # 5: free external references (a deliverable or decision id of some engagement) tied to a requirement or decision found in a meeting
+    """
+    CREATE TABLE requirement_links (
+      session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+      item_id TEXT NOT NULL,
+      ref TEXT NOT NULL,
+      ref_kind TEXT NOT NULL DEFAULT 'deliverable' CHECK (ref_kind IN ('deliverable', 'decision')),
+      engagement TEXT NOT NULL DEFAULT '',
+      created_at REAL NOT NULL,
+      PRIMARY KEY (session_id, item_id, ref)
+    );
+    CREATE INDEX requirement_links_ref ON requirement_links(ref);
+    """,
 ]
 
 

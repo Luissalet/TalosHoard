@@ -44,7 +44,7 @@ from funes_hoard.recent_files import RecentFilesPoller, windows_recent_dir
 from funes_hoard.retention import delete_range, run_retention
 from funes_hoard.scheduler import BackgroundScheduler
 from funes_hoard.sources import SourceRegistry
-from funes_hoard.timeparse import parse_day_or_range
+from funes_hoard.timeparse import parse_day_or_range, parse_moment
 from funes_hoard.agent_activity import agent_day
 
 _NOW_WORDS = {"", "now", "right now", "ahora", "ahora mismo", "en este momento", "actual", "current"}
@@ -125,6 +125,17 @@ class TimelineArgs(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
     around: Optional[str] = None
+
+
+class ProcedureDraftArgs(BaseModel):
+    start: Optional[str] = None
+    end: Optional[str] = None
+    events: Optional[list[dict]] = Field(default=None, max_length=5000)
+    locale: Literal["es", "en"] = "es"
+    format: Literal["json", "md"] = "json"
+    title: Optional[str] = Field(default=None, max_length=120)
+    screen: bool = True
+    clipboard: bool = True
 
 
 class AgentDayArgs(BaseModel):
@@ -253,7 +264,7 @@ class SourcePatchIn(BaseModel):
 AGENT_TOOLS = (
     "activity_now", "activity_where_was_i", "activity_project_resume", "activity_timeline", "activity_summary",
     "activity_search", "activity_recent_files", "activity_projects", "activity_pause",
-    "recall", "recall_search", "sources_status", "activity_agents_day",
+    "recall", "recall_search", "sources_status", "activity_agents_day", "activity_procedure_draft",
 )
 PRIVACY_MATCH_TYPES = ("app", "title_regex")
 CLASSIFY_MATCH_TYPES = ("app", "title_regex", "domain")
@@ -534,6 +545,39 @@ def create_app(
             return {"paused": True, "until": until, "until_resumed": until is None, "note": note}
 
         return run_agent("activity_pause", _args(minutes=args.minutes), _do)
+
+    async def _procedure_draft(args: ProcedureDraftArgs) -> dict:
+        from funes_hoard import procedure
+        from funes_hoard.procedure_collect import collect_events
+
+        if args.events is not None:
+            draft = procedure.build_draft(args.events, locale=args.locale, title=args.title, sources=["supplied"])
+        else:
+            now = time.time()
+            end_ts = parse_moment(args.end, now, "end")
+            start_ts = parse_moment(args.start, now, "start") if args.start else end_ts - 1800
+            if start_ts >= end_ts:
+                raise BadInput("bad_arguments", "start must be before end.")
+            if end_ts - start_ts > 6 * 3600:
+                raise BadInput("bad_arguments", "A procedure draft covers at most 6 hours; choose a shorter range.")
+            events, used, unavailable = await collect_events(db, sources_registry, start_ts, end_ts, screen=args.screen, clipboard=args.clipboard)
+            draft = procedure.build_draft(events, locale=args.locale, title=args.title, sources=used)
+            draft["unavailable_sources"] = unavailable
+            draft["recording_note"] = ("Talos records foreground windows, clipboard clips, screenshots and recent files; it does not record clicks or keystrokes, "
+                                       "so actions inside a window are only what the screenshots and clips show.")
+        if args.format == "md":
+            return {"format": "md", "text": procedure.render_markdown(draft), "steps": len(draft["steps"]), "unknowns": len(draft["unknowns"]), "executes_nothing": True}
+        return draft
+
+    @app.post("/api/agent/activity_procedure_draft")
+    async def agent_procedure_draft(args: ProcedureDraftArgs):
+        return await run_agent_async("activity_procedure_draft", _args(start=args.start, end=args.end, events=len(args.events) if args.events is not None else None, locale=args.locale),
+                                     _procedure_draft(args))
+
+    @app.post("/api/procedure/draft")
+    async def ui_procedure_draft(args: ProcedureDraftArgs):
+        """The same draft for the Talos page (no token: like every UI route it is guarded by host and origin). Reads only; executes nothing."""
+        return queries.agent_view(await _procedure_draft(args))
 
     @app.post("/api/agent/recall")
     async def agent_recall(args: RecallArgs):

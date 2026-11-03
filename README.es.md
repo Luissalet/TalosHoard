@@ -1,5 +1,39 @@
 # Talos's Hoard
 
+**Reuniones: requisitos y pendientes por reglas; pantalla: borradores de procedimiento.** Dos
+análisis de solo lectura, deterministas y sin modelo: no llaman a ningún modelo de lenguaje, no
+escriben en el ordenador observado ni arrancan ningún recolector.
+*Reunión → requisitos* (`scribe_requirements`, HTTP `GET /audio/api/sessions/{id}/requirements`):
+cada frase de una reunión transcrita se corta en cláusulas y se etiqueta con reglas lingüísticas del
+castellano y del inglés (verbos modales, condicionales, interrogativas, marcadores explícitos de
+decisión) como **compromiso** firme (responsable, interlocutor y fecha solo si las palabras los
+dicen), **propuesta**, **pregunta abierta** (con quién debe responder: un nombre en vocativo, la otra
+parte, el grupo o nadie), **decisión** o **requisito**. Cada elemento indica el indicio exacto que lo
+activó (`cue`), la regla (`cue_rule`), una confianza y su fragmento de origen (`segment` y `playback`:
+segundos de inicio y fin, texto de la transcripción y la llamada a `scribe_transcript` que lo lee; la
+página reproduce ese tramo de audio). «Podríamos», «could», «maybe we», «quizá», «intentaré»,
+«I'll try» y todo condicional son propuestas, nunca compromisos; una decisión negada o pendiente
+(«todavía no hemos decidido») no es una decisión. Los requisitos y las decisiones se vinculan al
+entregable o a la decisión de un encargo con una referencia externa libre (`scribe_requirement_link`,
+`POST/DELETE /audio/api/sessions/{id}/requirements/links`; `engagement_ref` filtra por ella); la
+referencia es solo texto, no hay CRM. Se exporta con `format` `md` (informe Markdown, títulos en `es`
+o `en`) o `json`; `format: commitments` devuelve solo los compromisos firmes en el formato
+`talos.commitment/1` que importa People's Hoard (`commitments_import_talos`), con todo lo demás en
+`rejected` y el motivo.
+*Pantalla → procedimiento* (`activity_procedure_draft`, HTTP `POST /activity/api/procedure/draft`):
+las ventanas en primer plano, los recortes del portapapeles, las capturas y los archivos recientes de
+un intervalo (hasta seis horas; o un registro de eventos que tú pases, que puede traer también clics y
+texto escrito) se segmentan en pasos (cambios de aplicación, formularios, copiar y pegar entre
+aplicaciones, clics, archivos). Cada paso conserva su evidencia (los eventos y la captura más
+cercana), los valores escritos o pegados pasan a ser entradas con nombre (los que parecen secretos se
+enmascaran en toda la salida), los valores copiados y pegados y los archivos son salidas, y lo que el
+registro no puede decir se lista como incógnitas (intención, estados nunca observados, clics sin
+elemento, huecos, un pegado que no se vio). Talos no registra clics ni pulsaciones: lo que ocurre
+dentro de una ventana es solo lo que muestran los recortes y las capturas. Es un borrador para que lo
+verifique una persona o un agente; nunca ejecuta nada en el ordenador observado. Ambos están en
+`/static/analysis.html` (castellano o inglés) y añaden tres herramientas: el catálogo pasa a **107
+herramientas** (105 más los dos controles de módulos).
+
 **Servicios: vigilancia periódica del SEO y GEO de las webs públicas.** Una web de la lista
 **Webs públicas** se apunta con `seo_interval_h` (horas entre auditorías, de 1 a 720; se edita en el
 editor de la lista, con `sites_watch` o con `POST /services/api/sites`). Cada auditoría es una
@@ -22,7 +56,7 @@ contra una web pública real: las categorías que no se pudieron medir (`score: 
 leen como un empeoramiento, los hallazgos que requieren criterio de una persona se cuentan aparte
 (`counts.judgement`) y nunca disparan un aviso, y una auditoría que responde `ok: false` se guarda
 como fallida con su propia causa y pista. Si Vitruvius está caído o su módulo de diseño apagado,
-la ejecución queda guardada como fallida con ese motivo y nada más cambia. `CASSANDRA_SEO=0` apaga la vigilancia. El catálogo pasa a **104 herramientas**
+la ejecución queda guardada como fallida con ese motivo y nada más cambia. `CASSANDRA_SEO=0` apaga la vigilancia. El catálogo pasó entonces a **104 herramientas**
 (tres nuevas para esta vigilancia, cuatro para audio).
 
 **Audio: limpieza de eco, capítulos de reunión y banco de transcripción.** Con altavoces,
@@ -176,7 +210,7 @@ fallida. Conserva filtros y selección; el lector de texto sigue disponible.
 Usa las rutas nativas de imagen y metadatos. `clip_get` de MCP mantiene dimensiones
 y texto OCR: no devuelve píxeles ni realiza OCR nuevo.
 
-El catálogo contiene **104 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare, dos para consultar/cambiar los módulos, cuatro de audio (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`) y tres de vigilancia SEO/GEO (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`). La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
+El catálogo contiene **107 herramientas**: las 91 originales, tres para selecciones guardadas, clip_compare, dos para consultar/cambiar los módulos, seis de audio (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`, `scribe_requirements`, `scribe_requirement_link`), tres de vigilancia SEO/GEO (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`) y `activity_procedure_draft`. La API de control es `/api/modules`; el catálogo y las llamadas, `/api/agent/tools` y `/api/agent/call`. El puente `mcp_server.py` descubre las herramientas sin arrancar Talos. Una llamada a una función apagada devuelve `module_disabled`.
 
 Las identidades antiguas pueden quedar en el Hub como entradas de compatibilidad **sin lanzador**, apuntando a Talos. Conservan la autenticación de la familia, referencias y llamadas internas; no ejecutan servidores antiguos. Las herramientas de audio que otras Hoards pedían a Funes siguen disponibles en `/legacy/funes/`. La prueba diferencial de la absorción (`scripts/differential/funes_absorption/`) compara el último commit de Funes anterior al traslado con los módulos Actividad y Audio de Talos sobre las mismas 130 llamadas grabadas, por la ruta principal y por la heredada: coinciden en las 130 (tres pasadas seguidas) y un fallo provocado a propósito se detecta; las diferencias previstas (módulos en un solo servidor, un único punto de entrada, argumentos y herramientas nuevos) están en su README. `scripts/differential/module_absorption/` hace lo mismo con las otras cuatro apps absorbidas (Pantalla/Argus 85 llamadas, Portapapeles/Echo 124, Servicios/Cassandra 148, Disco/DiskHoard 123), cada una por la dirección principal de Talos y por el prefijo del propio módulo, sobre datos hechos con el código antiguo y con motores falsos de captura, portapapeles, procesos, red, Faustus y Ollama (README y `RESULT.md` de esa carpeta; `tests/test_differential_modules.py` cubre sus ayudantes).
 

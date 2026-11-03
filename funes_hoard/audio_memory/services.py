@@ -16,6 +16,7 @@ from .bench import BenchJobs
 from .chapters import ChaptersService
 from .minutes import MinutesService
 from .pipeline import Pipeline
+from .requirements import RequirementsService
 from .recorder import Recorder
 from .settings import SettingsPatch, SettingsStore
 from .store import SessionStore
@@ -66,6 +67,7 @@ class Services:
         self.recorder.on_stopped = self.pipeline.enqueue_final
         self.minutes = MinutesService(self.db, self.sessions, self.settings, link_provider, emit=emit if emit is not None else family.emit)
         self.chapters = ChaptersService(self.db, self.sessions, self.settings, link_provider)
+        self.requirements = RequirementsService(self.db, self.sessions)
         self.bench = BenchJobs(self.worker, lambda: self.transcriber, lambda: self.settings.get().vad_sensitivity, config.data_dir)
         self.pipeline.on_done = self._transcribed
 
