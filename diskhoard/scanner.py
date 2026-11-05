@@ -328,14 +328,23 @@ def save_snapshot(sc: "Scanner", path: str) -> bool:
 
 def load_snapshot(path: str):
     """El Scanner de una instantanea (done, from_snapshot=True), o None si no
-    hay fichero, es de otra version o la carpeta raiz ya no existe."""
+    hay fichero, es de otra version o la carpeta raiz ya no existe. Una
+    instantanea ilegible (corrupta o truncada) se borra."""
     import gzip
     import pickle
 
     try:
         with gzip.open(path, "rb") as fh:
             payload = pickle.load(fh)
-    except (OSError, EOFError, ValueError, pickle.UnpicklingError):
+    except (FileNotFoundError, PermissionError):
+        return None
+    except Exception:  # noqa: BLE001 - zlib.error, BadGzipFile, truncated pickle...
+        # An unreadable snapshot is only a lost convenience: drop it so the
+        # module starts and the next finished scan writes a fresh one.
+        try:
+            os.remove(path)
+        except OSError:
+            pass
         return None
     if not isinstance(payload, dict) or payload.get("version") != SNAPSHOT_VERSION:
         return None
