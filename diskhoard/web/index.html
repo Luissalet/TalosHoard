@@ -115,13 +115,17 @@ header{display:flex;align-items:center;gap:10px;padding:8px 12px;min-width:0;
   border-bottom:1px solid var(--line);background:var(--hoard-sunken)}
 .crumbbar #btnRescanDir,.crumbbar #btnZipDir{flex:0 0 auto;font-size:12px;padding:3px 9px;color:var(--mut)}
 .crumbbar #btnRescanDir:hover,.crumbbar #btnZipDir:hover{color:var(--tx)}
-.crumbs{display:flex;align-items:center;gap:2px;padding:7px 12px;flex-wrap:wrap;
-  flex:1;min-width:0;font-size:12.5px}
-.crumbs a{color:var(--mut);text-decoration:none;padding:2px 6px;border-radius:5px;
-  cursor:pointer;font-family:Consolas,monospace}
-.crumbs a:hover{background:var(--panel2);color:var(--tx)}
-.crumbs a:last-child{color:var(--tx);font-weight:600}
+.crumb-address{flex:1;min-width:0;cursor:text}
+.crumbs:not([hidden]){display:flex;align-items:center;gap:2px;padding:7px 12px;flex-wrap:wrap;
+  font-size:12.5px}
+.crumbs a,.crumbs button{color:var(--mut);text-decoration:none;padding:2px 6px;border-radius:5px;
+  cursor:pointer;font-family:Consolas,monospace;max-width:100%;overflow-wrap:anywhere}
+.crumbs a:hover,.crumbs button:hover{background:var(--panel2);color:var(--tx)}
+.crumbs button{color:var(--tx);font-weight:600;background:transparent;border:0;text-align:left}
 .crumbs i{color:var(--dim);font-style:normal}
+#currentPath{width:calc(100% - 12px);margin:4px 0 4px 12px;padding:3px 6px;
+  font:12.5px/1.45 Consolas,monospace}
+#currentPath::selection{background:var(--acc);color:var(--hoard-accent-ink)}
 #body{flex:1;overflow:auto;min-height:0}
 .pane{display:none;padding:0}
 .pane.on{display:block}
@@ -370,7 +374,10 @@ button.primary:hover{background:var(--hoard-accent-strong);border-color:var(--ho
     </div>
 
     <div class="crumbbar">
-      <div class="crumbs" id="crumbs"></div>
+      <div class="crumb-address" title="Seleccionar la ruta actual (Ctrl+C para copiar)">
+        <div class="crumbs" id="crumbs"></div>
+        <input id="currentPath" type="text" aria-label="Ruta de la carpeta actual" readonly hidden>
+      </div>
       <button id="btnZipDir" class="ghost" title="Parte esta carpeta en ZIPs que no pasen de un tamaño">Partir en ZIPs…</button>
       <button id="btnRescanDir" class="ghost"
         title="Vuelve a leer solo esta carpeta y actualiza los totales. Rápido.">⟳ esta carpeta</button>
@@ -646,14 +653,36 @@ async function go(path, quiet) {
     alert(d.error); return;
   }
   S.dir = d; S.path = d.path;
+  $('#currentPath').value = d.path;
   $('#crumbs').innerHTML = d.crumbs.map((c,i) =>
-    (i ? '<i>›</i>' : '') + `<a data-p="${esc(c.path)}">${esc(c.name)}</a>`).join('');
+    (i ? '<i>›</i>' : '') + (i === d.crumbs.length - 1
+      ? `<button type="button">${esc(c.name)}</button>`
+      : `<a data-p="${esc(c.path)}" title="${esc(c.path)}">${esc(c.name)}</a>`)).join('');
   $$('#crumbs a').forEach(a => a.onclick = () => go(a.dataset.p));
   $('#btnUp').disabled = !d.parent;
   if (S.stat) $('#rootinfo').textContent = fb(d.root_size) + ' · ' + S.stat;
   renderExplorer();
   if (S.tab === 'tree') renderTree();
 }
+const currentPath = $('#currentPath');
+$('.crumb-address').onclick = e => {
+  if (e.target === currentPath || e.target.closest('a') || !S.path) return;
+  $('#crumbs').hidden = true;
+  currentPath.hidden = false;
+  currentPath.focus();
+  currentPath.select();
+};
+currentPath.onblur = () => {
+  currentPath.hidden = true;
+  $('#crumbs').hidden = false;
+};
+currentPath.onkeydown = e => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    currentPath.blur();
+    $('#crumbs button').focus();
+  }
+};
 $('#btnUp').onclick = () => { if (S.dir && S.dir.parent) go(S.dir.parent); };
 $('#btnRescan').onclick = () => { S.back = S.path; scan(S.root); };
 $('#btnRescanDir').onclick = async () => {
