@@ -161,5 +161,6 @@
       "cassandra_hoard",
       "diskhoard"
     ]
-  }
+  },
+  "skills": {"slugs": ["hoard-what-happened", "hoard-daily-digest", "systematic-debugging", "local-voice-comparison"], "limit": 4}
 }
