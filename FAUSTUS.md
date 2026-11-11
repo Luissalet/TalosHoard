@@ -5,6 +5,7 @@
 - Observación de pantalla a borrador de procedimiento (`activity_procedure_draft`; REST `POST /activity/api/procedure/draft`).
 - Página `/static/analysis.html` (castellano e inglés) con ambas vistas.
 - El catálogo de `/api/agent/tools` pasa a 107 herramientas.
+- En Disco, la carpeta actual y el espacio libre de la barra de rutas seleccionan la ruta completa para copiarla con `Ctrl+C`.
 
 ## Reuniones
 - Reglas lingüísticas deterministas, sin modelo, en castellano e inglés: compromiso firme, propuesta, pregunta abierta (con quién debe responder), decisión y requisito.

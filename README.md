@@ -144,7 +144,7 @@ Every module is **OFF on first start**. Opening the app or discovering its MCP t
 | Activity | Foreground windows, idle/lock handling, recent files, Git commits, projects, classifications, privacy rules, summaries, exports and cross-module recall |
 | Audio | Microphone/system recording, file import, streaming transcripts, echo clean-up between tracks, search, notes, tags, exports, minutes, meeting chapters, transcription bench, shared speech-to-text and GPU/CPU fallback |
 | Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, scheduled SEO/GEO audits with baseline and drift, notifications and restart policies |
-| Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, ZIP splitting and model-backup management |
+| Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, copyable address bar, ZIP splitting and model-backup management |
 
 The Faustus copilot is served by Talos itself: `GET /api/copilot/info`, `GET /api/copilot/panel.js`, `POST /api/copilot/proxy` and `GET /api/copilot/launcher.js` (each module's pages also answer under `/<module>/api/copilot/`). The Services interface registers `window.hoardCopilot.context()` so the assistant sees the service, site, incident or filter on screen; the conversation lives in Faustus, not in Talos.
 

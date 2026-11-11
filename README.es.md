@@ -159,6 +159,7 @@ Memoria de pantalla, portapapeles, actividad, audio, vigilancia de servicios y g
 - **Audio:** micrófono y sonido del sistema, importación, transcripción en directo, limpieza de eco entre pistas, búsqueda, notas, etiquetas, exportaciones, actas, capítulos de reunión, banco de transcripción y servicio compartido de transcripción.
 - **Servicios:** salud, incidentes y causas probables, registros, GPU, bus de eventos, trabajos fallidos, sitios/DNS/certificados/dominios, auditorías SEO/GEO periódicas con línea base y deriva, avisos y políticas de reinicio.
 - **Disco:** análisis de espacio, árbol, archivos grandes/antiguos, extensiones, limpieza, papelera y borrado definitivo con sus comprobaciones, scripts, selector de carpeta, ZIP divididos y copias de modelos.
+  Pulsa la carpeta actual o el espacio libre de la barra de rutas y usa `Ctrl+C` para copiar la ruta completa.
 
 Cada módulo conserva su interfaz completa. Todo comparte el tema de los Hoards, el icono de Talos y el botón de Faustus.
 
