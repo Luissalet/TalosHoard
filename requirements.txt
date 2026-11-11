@@ -15,7 +15,7 @@ pyperclip==1.11.0
 sounddevice==0.5.6
 SoundCard==0.4.6
 faster-whisper==1.2.1
-av==19.0.1
+av==16.1.0
 webrtcvad-wheels==2.0.14.post1
 pywin32==312; sys_platform == "win32"
 winocr>=0.0.13; sys_platform == "win32"
