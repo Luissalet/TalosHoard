@@ -1,194 +1,59 @@
 # Talos's Hoard
 
-**Meetings: requirements and pending items by plain rules; screen: procedure drafts.** Two
-read-only analyses, deterministic and without a model; neither calls a language model, writes to the
-captured computer or starts a collector.
-*Meeting → requirements* (`scribe_requirements`, HTTP `GET /audio/api/sessions/{id}/requirements`):
-every sentence of a transcribed meeting is cut into clauses and labelled with Spanish and English
-linguistic rules (modals, conditionals, interrogatives, explicit decision markers) as a firm
-**commitment** (owner, counterpart and due day only when the words say them), **proposal**,
-**open question** (with who must answer: a vocative name, the other side, the group or nobody),
-**decision** or **requirement**. Each item reports the exact cue that triggered it (`cue`), the rule
-(`cue_rule`), a confidence and its source segment (`segment` and `playback`: start/end seconds,
-transcript text and the `scribe_transcript` call that reads it; the page plays that stretch of audio).
-"Podríamos", "could", "maybe we", "quizá", "intentaré", "I'll try" and every conditional are proposals,
-never commitments; a negated or pending decision ("todavía no hemos decidido") is not a decision.
-Requirements and decisions are tied to an engagement's deliverable or decision by a free external
-reference (`scribe_requirement_link`, `POST/DELETE /audio/api/sessions/{id}/requirements/links`;
-`engagement_ref` filters by it); the reference is only text, there is no CRM. Export with `format`
-`md` (Markdown report, headings in `es` or `en`) or `json`; `format: commitments` returns only the
-firm commitments in the `talos.commitment/1` shape that People's Hoard imports
-(`commitments_import_talos`), with everything else as `rejected` and the reason.
-*Screen → procedure* (`activity_procedure_draft`, HTTP `POST /activity/api/procedure/draft`): the
-foreground windows, clipboard clips, screenshots and recent files of a range (up to six hours; or an
-event log you supply, which may also carry clicks and typed text) are segmented into steps (app
-switches, form fills, copy/paste between apps, clicks, files). Each step keeps its evidence (the
-events and the closest screenshot), the values typed or pasted become named inputs (values that look
-like secrets are masked everywhere in the output), copied-and-pasted values and files become
-outputs, and what the log cannot say is listed as unknowns (intent, states never observed, clicks
-without a target, gaps, a paste never seen). Talos records no clicks or keystrokes, so actions inside
-a window are only what the clips and screenshots show. It is a draft for a person or an agent to
-verify; it never executes anything on the captured computer. Both are available in
-`/static/analysis.html` (Spanish or English) and add three tools: the catalog is now **107 tools**
-(105 plus the two module controls).
+Your computer's memory and health in one local process: screen history, clipboard, activity, audio and meetings, service monitoring and disk space.
 
-**Services: scheduled SEO/GEO watch of the public websites.** A site in the **Webs públicas**
-list opts in with `seo_interval_h` (hours between audits, 1 to 720; edit it in the list editor,
-with `sites_watch` or `POST /services/api/sites`). Each audit is one call of the design
-Hoard's `site_audit` tool through the hub; Services reads its score, the score per category and
-its findings and keeps every run (a failed one stores its cause and is retried an hour later).
-The first successful audit is the **baseline**; every later run is compared with the one before
-(score change, categories that moved, findings that appeared or were resolved) and with the
-baseline (`sites_seo_baseline` or **Aceptar como referencia** moves it after a fix). Alerts on the
-family bus: `cassandra.site.seo_drop` when the score is at least `seo_drop_points` (default 2) below
-the best of the last seven runs and below the run before, and `cassandra.site.seo_critical` when a
-critical finding appears that the run before did not have; the first run announces nothing, and
-the Boop notification carries no site name, score or finding text. MCP: `sites_seo` (state, drift,
-critical findings, with `history` the latest runs), `sites_seo_run` (audit now) and
-`sites_seo_baseline`; HTTP `GET /services/api/sites/seo`, `GET /services/api/sites/{id}/seo`,
-`POST /services/api/sites/seo/run` and `POST /services/api/sites/{id}/seo/baseline`. The Panel's site
-card shows score and change beside each site and a **SEO y GEO** block in its detail. The audit tool
-belongs to Vitruvius and its `site-audit/1` envelope is verified live against a real public site:
-categories that could not be measured (`score: null`) are never read as a worsening, findings
-that need a person's judgement are counted apart (`counts.judgement`) and never raise an alert,
-and an audit that answers `ok: false` is stored as failed with its own cause and hint. If
-Vitruvius is down or the design module is off, the run is stored as failed with that reason and
-nothing else changes. `CASSANDRA_SEO=0`
-switches the watch off. The catalog was then **104 tools** (three new for this watch, four for audio); see the meetings paragraph above for the current count.
+## What it is
 
-**Audio: echo clean-up, meeting chapters and a transcription bench.** With speakers
-on, the microphone hears the other side again and the final pass used to write the
-same sentence twice, the second copy as "yo". After transcribing, the microphone
-lines that only sound while the system track sounds (60 % or more of their active
-frames, at least twice as quiet there) or that repeat word for word what the other
-track said within two seconds are dropped; the session stores how many (`stats.final.echo`).
-Setting **Quitar el eco del micrófono** (on by default); `scribe_echo_check` lists the
-echo lines of an existing session and, with `apply: true`, removes them.
-Meetings and interviews of three minutes or more are split into 2-12 **chapters**
-by one plain call (no tools) to the global model: each start is snapped to the start
-of a real transcript line, sorted, deduplicated and the first one moved to the first
-line; titles are 2-6 words in the language of the transcript. Chapters appear in the
-session page (click to jump), as ticks on the waveform, in the minutes and in the
-MD/TXT exports. Setting **Dividir en capítulos al terminar**; MCP `scribe_chapters`
-(`regenerate` asks again), HTTP `GET/POST /audio/api/sessions/{id}/chapters`.
-**Banco de transcripción** (Ajustes → Audio, MCP `scribe_bench` / `scribe_bench_status`,
-HTTP `/audio/api/bench`) runs four recordings with a known script (overlapping voices,
-speaker echo, background music, silence) through the configured engine, the
-hallucination filter, echo clean-up and track merge, scores found words, correct side,
-leaked echo, invented lines and seconds, compares with the same output without echo
-clean-up and stores the result in `<audio data>/bench-results.json`. Measured with
-faster-whisper small on CPU int8: call 90 % of words found, 100 % correct side, 0 leaked,
-0 invented; call with speaker echo 90 % found, 100 % correct side, 0 leaked (23 echo lines
-removed; without clean-up 18 leaked and 46 lines instead of 20); music 99 %; silence 0
-lines. Four new audio tools: `scribe_chapters`, `scribe_echo_check`,
-`scribe_bench`, `scribe_bench_status`. The fixtures are third-party recordings released
-as CC0 and the method follows an MIT-licensed project; see
-`funes_hoard/audio_memory/NOTICE-meeting-recorder.md`.
+Talos's Hoard records what happens on your PC and answers questions about it: what was on screen, what you copied, what you worked on, what was said in a meeting, which service went down and why, and what is eating your disk. It runs locally, keeps its data on your machine and exposes everything to an assistant through MCP.
 
-In **Audio → Session**, **Buscar en esta sesión** opens search for that exact
-session ID, including when titles repeat. Text, kind and date filters combine
-with that scope; searching all sessions removes only the scope and keeps the
-fields. Errors support retry and changed criteria retire stale results. Links
-retain original timestamps, including00:00. Counts describe returned native
-hits, not an exhaustive total. `GET /audio/api/search` and `scribe_search` accept
-optional `session_id`; omitted/empty searches all, an unknown ID returns no hits.
-The same native index/tokenizer and97 tools remain. This reads stored text without
-recording, transcription or model loading. No filter persistence across reloads
-or page changes is promised. The interface keeps its existing Spanish language.
+It is organised as six independent modules. Every module is **off on first start**: opening the app or discovering its MCP tools starts no collector, watcher, model or scanner. An explicit switch enables a module; disabling it stops its workers before closing its database. Your choices persist. Clipboard can run while screen capture, activity and audio stay off.
 
-Activity → Today → **Where was I?** can read distinct recorded contexts before an
-optional local date/time, request up to20 and include the categories omitted by
-default. Blank date retains now/end-of-selected-day behavior. Read/Retry applies
-the fields explicitly; Back to this day restores the original three-context query.
-Results label the actual returned cut-off with time zone, requested maximum and
-category scope. A future cut-off is reduced to now by the existing native query.
-Known projects rank before bare apps within the three-day lookup; this is not a
-global chronological list. Show in timeline keeps its explicit navigation.
-Pending fields survive errors and copilot refresh of the applied query; edits
-discard obsolete responses and changing day resets the filter. Titles do not prove
-edits, and recorded paths are not opened or checked. Existing HTTP and
-`activity_where_was_i` MCP97 contracts/engine are unchanged.
+## Modules and what they do
 
-Clipboard History filters by **Aplicación registrada**, the exact, case-sensitive
-saved process name. Combine it with text/type; **Todas las aplicaciones** clears
-only the application. The result states its scope: up to 200 recent clips or 100
-search matches ranked by relevance, not a global count. The recorded source is
-the latest origin retained by native deduplication, not every past application.
-Filter changes discard obsolete results; retry retains filters, open reader,
-selection and bundle draft. The module keeps its existing Spanish interface.
-Existing HTTP list/search and `clip_search` already accept `app`; `clip_recent`
-now also accepts optional `app`, sharing the native filter (97 tools unchanged).
-Reading/filtering starts no capture or model and does not write saved clips.
-
-Clipboard → History now offers **Ver imagen** to inspect the complete saved PNG
-without copying it to the OS clipboard. Fit and 100% modes retain the full image,
-with local scrolling at original size, dimensions/source/ID and explicit retry.
-Filters, selection and the text reader remain available. It uses the existing
-image and metadata routes; MCP `clip_get` still returns dimensions and OCR text,
-not image pixels or new OCR output.
-
-<img src="app-icon.png" width="96" alt="Talos icon">
-
-Screen memory, clipboard history, desktop activity, audio, service monitoring and disk management in one local process. Incorporates Argus, Echo, Funes, Cassandra and DiskHoard.
-
-[Castellano](README.es.md) · [Complete tool inventory](provenance/CAPABILITIES.md) · [Source provenance](provenance/sources.json)
-
-## Independent modules
-
-Every module is **OFF on first start**. Opening the app or discovering its MCP tools starts no collector, watcher, model or scanner. An explicit switch enables a module; disabling it stops its workers before closing its database. Your choices persist. Clipboard can run while screen capture, activity and audio remain off.
-
-| Module | Preserved functions |
-|---|---|
+| Module | What it covers |
+| --- | --- |
 | Screen | Screenshots, OCR, visual and full-text search, similar frames, timeline, application activity, exclusions, private mode, import and folder watching, pinned frames, exports and retention |
-| Clipboard | Text and image history, type detection, OCR, search, favourites, edit/delete/restore, copy and bundles |
-| Activity | Foreground windows, idle/lock handling, recent files, Git commits, projects, classifications, privacy rules, summaries, exports and cross-module recall |
-| Audio | Microphone/system recording, file import, streaming transcripts, echo clean-up between tracks, search, notes, tags, exports, minutes, meeting chapters, transcription bench, shared speech-to-text and GPU/CPU fallback |
-| Services | Health checks, incidents, probable causes, logs, GPU history, event bus, job incidents, site/DNS/certificate/domain checks, scheduled SEO/GEO audits with baseline and drift, notifications and restart policies |
-| Disk | Space scan/tree, hotspots, largest and stale files, extension statistics, cleanup, recycle/permanent deletion safeguards, scripts, folder picker, copyable address bar, ZIP splitting and model-backup management |
+| Clipboard | Text and image history, type detection, OCR, search, favourites, edit, delete and restore, copy, bundles |
+| Activity | Foreground windows, idle and lock handling, recent files, Git commits, projects, classifications, privacy rules, summaries, exports and cross-module recall |
+| Audio | Microphone and system recording, file import, streaming transcripts, search, notes, tags, exports, meeting minutes, chapters, shared speech-to-text with GPU/CPU fallback |
+| Services | Health checks, incidents and probable causes, logs, GPU history, event bus, job incidents, site, DNS, certificate and domain checks, scheduled SEO/GEO audits, notifications, restart policies |
+| Disk | Space scan and tree, hotspots, largest and stale files, extension statistics, cleanup, recycle-bin and permanent-deletion safeguards, scripts, ZIP splitting, model-backup management |
 
-The Faustus copilot is served by Talos itself: `GET /api/copilot/info`, `GET /api/copilot/panel.js`, `POST /api/copilot/proxy` and `GET /api/copilot/launcher.js` (each module's pages also answer under `/<module>/api/copilot/`). The Services interface registers `window.hoardCopilot.context()` so the assistant sees the service, site, incident or filter on screen; the conversation lives in Faustus, not in Talos.
+The native interfaces live under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`, sharing the Hoard theme and the Faustus copilot.
 
-The full native interfaces remain under `/screen/`, `/clipboard/`, `/activity/`, `/audio/`, `/services/` and `/disk/`. The shared Hoard theme, product icon and Faustus copilot apply throughout. Capture backends and operating-system integrations retain their original platform requirements.
+**Screen**
+- Captures screenshots with OCR, searchable by text and by visual similarity, with a timeline, per-application activity, exclusions, a private mode and retention rules; you can pause, delete a range, import screenshots or watch a folder.
 
-In **Activity → Projects**, **Resume** reads the selected project's recorded
-foreground windows, file openings and commits through the existing
-`activity_project_resume` calculation. The detail has its own look-back interval
-(1–180 days) and maximum per evidence type (1–10), independent of the table's
-period. Changing a detail parameter clears the old result; errors retain the
-selection and parameters for Retry. The owner HTTP wrapper is
-`POST /activity/api/projects/resume` with `project`, `days` and `limit`; the
-existing MCP tool and combined 97-tool catalog are unchanged.
+**Clipboard**
+- History of text and images with type detection and OCR, search, favourites and restore.
+- **Reunir copias** combines up to 20 clips into one text with source and date notices, a separator of your choice, copy or TXT download; selections can be saved by name.
+- **Leer texto** pages through long clips; **Comparar dos copias** shows a literal line diff of two clips. Previewing never changes stored clips.
 
-Names match the native exact project rules. Only windows lasting at least ten
-seconds appear, while active time includes every active span in the interval.
-Last foreground activity may be unknown even when recorded file openings exist.
-An empty interval means no recorded evidence, not no work. Titles do not prove
-edits or pending changes, and recorded file paths are not checked or opened.
-Reading context starts no capture, model, file discovery or other application.
+**Activity**
+- Foreground windows, recent files and Git commits become a timeline of projects with summaries and exports.
+- **Projects -> Resume** reads a project's recorded windows, file openings and commits over a look-back interval, to pick up where you left off. An empty interval means no recorded evidence, not no work.
+- **Screen to procedure** draft: windows, clips, screenshots and files of a range are segmented into steps with evidence, named inputs (secret-looking values masked), outputs and a list of unknowns. It is a draft for a person or agent to verify and never executes anything.
 
-Clipboard History supports an ordered selection of up to 20 saved clips. **Reunir copias** reads their texts through the existing `clip_bundle` handler, shows source/date and partial-text notices, and lets you reorder, choose a separator, copy the combined text or download TXT. Selections remain visible when filtering and can be removed individually. Images contribute saved OCR text only; image files are not attached. Each clip uses the native 20,000-character limit, explicitly marked when partial. Previewing never changes stored clips. The module retains its Spanish interface. The owner's UI endpoint is `POST /clipboard/api/clips/bundle`; The existing bundle tool is unchanged.
+**Audio**
+- Live and final transcription of microphone and system audio, import and export, search, notes and tags.
+- Echo clean-up removes microphone lines that only repeat what the other track said; meetings of three minutes or more are split into chapters by the global model, shown in the session page, on the waveform, in the minutes and in exports.
+- **Meeting to requirements**: every sentence is cut into clauses and labelled by Spanish and English linguistic rules as a firm commitment (owner, counterpart and due day only when the words say them), proposal, open question, decision or requirement, each with the exact cue and the source audio segment. "Could", "maybe" and every conditional are proposals, never commitments. Items can be tied to an engagement reference and exported as Markdown, JSON or as commitments for the people app.
+- A transcription bench runs recordings with a known script through the configured engine and scores found words, correct side, leaked echo and invented lines.
+- **Buscar en esta sesión** searches within one session.
 
-**Leer texto** opens a non-image history clip in selectable, literal 4,000-character pages, including text beyond a bundle's prefix. Previous/Next use native Python character offsets, preserving emoji at page boundaries. Reading leaves the clipboard, search, selection and bundle drafts untouched; closing, switching clips or refreshing discards obsolete responses. `GET /clipboard/api/clips/{id}/text?offset=0&max_chars=4000` delegates to the existing `clip_get` handler, including its hidden/deleted access checks. MCP's existing response cap is separate from page size and remains unchanged. No new copy or capture action is added.
+**Services**
+- Health checks, incidents with probable causes, logs, GPU and VRAM history, uptime, restart policies, a watch list, reboot detection and an audit trail of agent calls.
+- Public sites: uptime, TLS certificates, domain expiry and DNS. A site can opt in to a scheduled SEO/GEO audit (`seo_interval_h`, 1 to 720 hours): the first success is the baseline, later runs are compared with the previous run and the baseline, and a drop in score or a new critical finding raises an alert on the family bus. Categories that could not be measured never count as a worsening.
 
-With exactly two selected clips, **Comparar dos copias** reads A/B explicitly through the same native bundle reader and shows literal line differences, origins/dates and counts. Spaces, tabs, LF/CRLF and missing final newline remain visible. Swap changes selection order; edits and copilot refresh discard obsolete results without deleting selection drafts. Copy includes the actual snapshot and scope. Images contribute only saved OCR text; no OCR, capture or real clipboard read is triggered. Uses Python's standard difflib; no model, semantic equivalence, minimum diff or applicable patch is promised.
+**Disk**
+- Scans with a tree and treemap (keyboard navigable), hotspots, largest and stale files, a junk catalogue, find files, folder explanations, cleanup scripts, deletion to the recycle bin or permanent with safeguards, ZIP splitting and management of model backups.
 
-`clip_compare {left_id,right_id,max_chars_per_clip}` and `POST /clipboard/api/clips/compare` share one calculation. The existing reader allows distinct IDs and up to20,000characters per text (tool default8,000; UI20,000). `left.truncated`, `right.truncated`, `text_scope=extracts` describe partial text: matching extracts do not establish equality of whole clips. UI/API receive every calculated row. Agent/MCP retains its existing best-effort ~20KB cap, which may independently cut rows and add a top-level `truncated` block; summary/total_rows still describe the full calculation. A very large nested row can still exceed that inherited budget. No global cap was changed or bypassed. Request a shorter prefix or use clip_get for the original text; do not describe a capped response as a complete diff. Clips and saved selections are not modified; copying the result is explicit.
+**Cross-module recall**
+- Recall queries screen, clipboard and audio together inside this process.
 
-## Run
+## Run it
 
-Inside **Reunir copias**, **Selecciones guardadas** stores a named selection of
-up to 20 clip IDs, their order, separator and origin/date option. Load explicitly
-to replace the editable draft; review explicitly to read current clip contents.
-Save changes (including rename), save as new or delete only the saved selection.
-Original clips are never copied, moved, pinned or edited by these operations.
-Missing IDs remain visible/removable; the existing bundle reader reports them.
-Native tools `clip_selections`, `clip_selection_save` and `clip_selection_delete`
-share SQLite metadata with `GET/POST /clipboard/api/clips/selections` and
-`DELETE /clipboard/api/clips/selections/{id}`. IDs/options persist across reloads;
-the stored selection contains no clip text or image. Capture/OCR and module
-activation keep their existing explicit controls.
-
-Python 3.11+; Windows is required for Windows desktop capture and system integrations. From this folder:
+Python 3.11+; Windows is required for desktop capture and system integrations.
 
 ```powershell
 python -m venv .venv
@@ -196,45 +61,40 @@ python -m venv .venv
 .venv\Scripts\python.exe -m talos_hoard --no-browser
 ```
 
-Open `http://127.0.0.1:5220`. `Start.cmd` performs the initial environment setup if needed. The server never opens a window automatically. Hoard Hub reads `faustus-plugin.json` for explicit launch and MCP access.
+Open `http://127.0.0.1:5220`. `Start.cmd` sets up the environment if needed. The server never opens a window automatically; the Hoard Hub reads `faustus-plugin.json` for explicit launch and MCP access.
 
-## Existing data
+| Variable | Purpose |
+| --- | --- |
+| `TALOS_DATA_DIR`, `TALOS_PORT` / `--port` | Central data folder and port. |
+| `TALOS_URL`, `TALOS_TOKEN_FILE` | Settings for the MCP bridge. |
 
-No history is copied, moved, cleared or converted during adoption. With all modules OFF, map the old data folders in place:
+A new installation stores data in `data/<module>`. To keep the history of the original apps, with every module off run `scripts\adopt_data.py --parent "C:\path\to\Hoards"`: it writes only `data/modules.json` and leaves databases, screenshots, clipboard images, recordings, settings, tokens and disk snapshots where they are. Module data can also be relocated into `data/native/<module>/data`, moving whole trees. Disabling a module never deletes its history; on activation the native engine resumes with its saved privacy and retention settings.
+
+## Connect to Faustus and the Hoard family
+
+- **MCP**: `GET /api/agent/tools` lists about a hundred tools and `POST /api/agent/call` takes the bearer token in `data/mcp-token`. Calls to an off module answer `module_disabled` and never enable it. `python mcp_server.py` is the stdio bridge; its catalogue works without a running server and never launches one. Modules are controlled with `GET /api/modules`, `PUT /api/modules/{id}` (`{"enabled": true|false}`) and `POST /api/modules/stop-all`, or the tools `talos_modules` and `talos_set_module`.
+- **Tool groups**: screen (`screen_*`), clips (`clip_*`, including `clip_bundle`, `clip_compare`, `clip_selections`), activity (`activity_*`, including `activity_project_resume` and `activity_procedure_draft`), audio (`scribe_*`, including `scribe_requirements`, `scribe_chapters`, `scribe_echo_check`, `scribe_bench`), services (`service*`, `sites_*`, including `sites_seo`, `sites_seo_run`, `sites_seo_baseline`), disk and recall. Every tool is listed in [`provenance/`](provenance/).
+- **Copilot**: Talos serves the Faustus panel itself (`/api/copilot/*`, also under each module's path). The Services interface tells the assistant which service, site, incident or filter is on screen; the conversation lives in Faustus.
+- **Hub**: events and notifications, and compatibility entries for retired identities that keep family tokens, references and cross-app calls working without running the old servers. The meeting commitments feed the people app, and the audio tools also answer on `/legacy/funes/`.
+- **Models**: text-model requests use the family's configured global model service; audio and visual engines keep their optional local model downloads and GPU leases. No model loads while its module is off.
+- **Skills**: `hoard-what-happened`, `hoard-daily-digest`, `systematic-debugging` and `local-voice-comparison` are offered to connecting agents.
+
+## Project layout
+
+| Path | Contents |
+| --- | --- |
+| `talos_hoard/` | Combined server, module lifecycle and tool catalogue |
+| `argus/`, `cassandra_hoard/`, `diskhoard/`, `echo/`, `funes_hoard/` | Engines of the Screen, Services, Disk, Clipboard and Audio/Activity modules |
+| `ui/` | Native interface projects (`npm ci && npm run build` in each; built assets are included) |
+| `compatibility/` | Manifests that preserve the retired identities |
+| `provenance/` | Licences and exact source commits; Cinzel and Source Sans 3 fonts ship under their SIL Open Font Licenses |
+| `scripts/` | Data adoption, catalogue builder, synthetic QA server, MCP verification |
+| `tests/`, `legacy_tests/` | Test suites |
 
 ```powershell
-.venv\Scripts\python.exe scripts\adopt_data.py --parent "C:\path\to\Hoards"
+python -m pytest tests -q      # needs pytest and pytest-asyncio
 ```
 
-This writes only `data/modules.json`. Existing databases, screenshots, clipboard images, recordings, settings, tokens and disk snapshots stay in their original folders. Keep those folders. `data_paths` can also be edited while the server is stopped. A new installation without adoption uses `data/<module>`.
+`scripts/qa_server.py` starts a synthetic instance with fake capture and audio and offline network engines.
 
-On activation, the native engine resumes its normal behaviour, including its saved privacy and retention settings. Disabling a module never deletes its history. In-progress operations finish before OFF is reported; live event streams are disconnected. Large media responses stream without loading whole recordings into memory.
-
-`TALOS_DATA_DIR`, `TALOS_PORT` and `--port` override the central data folder and port. Original module environment variables still configure their capture/model backends. `TALOS_TOKEN_FILE` and `TALOS_URL` configure the MCP bridge.
-
-## API and MCP
-
-`GET /api/modules`, `PUT /api/modules/{id}` with `{"enabled":true|false}`, and `POST /api/modules/stop-all` control the modules. `GET /api/agent/tools` exposes 107 tools: the original 91 native tools, three saved-selection tools, `clip_compare`, `talos_modules` and `talos_set_module`, six audio tools (`scribe_chapters`, `scribe_echo_check`, `scribe_bench`, `scribe_bench_status`, `scribe_requirements`, `scribe_requirement_link`), three SEO/GEO watch tools (`sites_seo`, `sites_seo_run`, `sites_seo_baseline`) and `activity_procedure_draft`. `POST /api/agent/call` requires the bearer token in `data/mcp-token`. Calls to an OFF module return `module_disabled`; they never enable it implicitly.
-
-Run `.venv\Scripts\python.exe mcp_server.py` for stdio MCP. Its catalogue works without a running Talos server and never launches one. Native API names, record identifiers and source citations are preserved. Recall calls screen, clipboard and audio directly inside this process.
-
-Retired Hoard identities may remain registered as **non-launchable compatibility entries** pointing at these module routes. They preserve family token authentication, references and cross-Hoard calls; they do not run old servers. Funes's family audio tools are also routed through `/legacy/funes/`.
-
-## Development and verification
-
-Install `pytest pytest-asyncio` in the same environment. Run `python -m pytest tests -q`. `legacy_tests/` retains the incorporated engines' regression tests; run each engine's suite separately where helper modules have identical names. `scripts/qa_server.py` starts a synthetic instance with fake capture/audio and offline network engines. `scripts/verify_mcp.py --data-dir <QA-data>` checks the real stdio transport against that instance. `scripts/differential/funes_absorption/` holds the differential test of the Funes absorption: the last Funes commit before the move and Talos's Activity and Audio modules answer the same 130 recorded tool calls and the traces are compared exactly (`run.py`, see its README and `RESULT.md`; it needs a checkout of that commit and of the differential kit, so it is not part of `pytest`). `scripts/differential/module_absorption/` does the same for the other four absorbed apps (Pantalla/Argus 85 calls, Portapapeles/Echo 124, Servicios/Cassandra 148, Disco/DiskHoard 123), each through Talos's main address and through the module's own prefix, over data built by the old code and with fakes for capture, clipboard, processes, network, Faustus and Ollama (see its README and `RESULT.md`; `tests/test_differential_modules.py` covers its helpers).
-
-UI sources live under `ui/`; each has its own lockfile. Run `npm ci` and `npm run build` inside the relevant UI directory. Built assets ship with the repository. `scripts/build_catalog.py` rebuilds the static native tool definitions without opening histories or starting engines.
-
-Text-model requests use the family's configured global Sparks service. Audio and visual engines retain their native optional model downloads and local GPU leases; no model loads while its module is OFF. `provenance/` records licenses and exact source commits. Cinzel and Source Sans 3 ship under their included SIL Open Font Licenses.
-
-
-## Owned data and compatibility
-
-Native module data can be relocated into `data/native/<module>/data`, with per-module configuration beside it. Writer fiction uses the owning desktop profile `writers-hoard/fiction/data`. Move complete data trees, including SQLite WAL/SHM, media, downloaded models and browser sessions; update saved absolute paths before enabling a module. The compatibility manifests in `compatibility/<id>/faustus-plugin.json` preserve native IDs, tool schemas and tokens without a retired checkout. Add each merged application's `compatibility` directory to Hub roots before the general repository root. Discovery and compatibility bridges never start an application. All modules remain OFF during relocation.
-
-Legacy in-place adoption scripts are optional import helpers; keeping the old repository is unnecessary once relocation and route updates have been verified.
-
-## Skills for the agents that connect
-
-This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `hoard-what-happened`, `hoard-daily-digest`, `systematic-debugging`, `local-voice-comparison`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
+License: MIT (see `LICENSE`).
