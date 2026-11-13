@@ -115,3 +115,11 @@ def test_funes_compatibility_reaches_audio_without_activity(tmp_path, quiet_engi
         assert c.get("/legacy/funes/api/health").status_code == 200
         assert c.put("/api/modules/audio", json={"enabled": False}).status_code == 200
         assert c.get("/legacy/funes/api/health").status_code == 409
+
+
+def test_dock_frames_from_a_known_faustus_origin_only(tmp_path, quiet_engines):
+    framed = {"sec-fetch-site": "cross-site", "sec-fetch-mode": "navigate", "sec-fetch-dest": "iframe"}
+    with client(create_app(tmp_path, port=5220)) as page:
+        assert page.get("/", headers={**framed, "referer": "http://127.0.0.1:1/"}).status_code != 403
+        assert page.get("/", headers={**framed, "referer": "https://evil.example/"}).status_code == 403
+        assert page.get("/", headers={**framed, "sec-fetch-dest": "embed", "referer": "http://127.0.0.1:1/"}).status_code == 403

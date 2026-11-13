@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from echo.hoard_link.guard import check_request
+from echo.hoard_link.guard import _dock_origins as dock_origins, check_request  # noqa: F401
 
 
 SPECS = [
