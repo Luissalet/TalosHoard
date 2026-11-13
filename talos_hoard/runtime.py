@@ -162,8 +162,11 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
     @app.middleware("http")
     async def local_request_guard(request, call_next):
         # Reuse the family's established host/origin protection.
-        from .native import check_request
-        verdict = check_request(request.method, dict(request.headers), port, (), strict_ports=True)
+        from .native import check_request, dock_origins
+        headers = dict(request.headers)
+        # A framed navigation from the Faustus dock is let in when its parent is a known Faustus origin.
+        dock = await asyncio.to_thread(dock_origins, request.method, headers)
+        verdict = check_request(request.method, headers, port, (), strict_ports=True, faustus_origins=dock)
         if verdict:
             return JSONResponse({"error": verdict[1]}, status_code=verdict[0])
         if request.url.path in ("/api/copilot/info", "/api/copilot/proxy"):
