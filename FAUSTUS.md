@@ -35,3 +35,7 @@
 ## Skills for the agents that connect
 
 This app carries procedures from the skill library of the family's workspace for the agents that connect to it: `hoard-what-happened`, `hoard-daily-digest`, `systematic-debugging`, `local-voice-comparison`. They are named in what an agent reads on connecting, read with `skills_list` and `skill_read`, searched and assigned with `skills_library` and `skills_assign`, and offered as prompts. The person chooses them on the skills page (`/api/agent/skills/page`) or in the hub's Skills tab; the `skills` block of `faustus-plugin.json` holds what the app asks for by default.
+
+## App Dock
+
+El servidor fusionado se puede enmarcar dentro del App Dock de Faustus: una navegación enmarcada (`iframe`/`frame`, solo GET) pasa la guarda cuando la página que la abre es un origen de Faustus conocido (el configurado o el que el Hub publica en su colocación). Los orígenes ajenos y los marcos `embed`/`object` se siguen rechazando. Lo cubre `tests/test_modules.py::test_dock_frames_from_a_known_faustus_origin_only`.
