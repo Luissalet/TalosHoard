@@ -47,6 +47,8 @@ SENTENCE_END = (".", "?", "!", "…", "。", "؟")
 
 os.environ.setdefault("CACTUS_TELEMETRY", "0")
 
+_LANGUAGES_CACHE: dict[str, tuple[str, ...]] = {}
+
 
 def _env(*names: str) -> str:
     for name in names:
@@ -88,14 +90,21 @@ def model_present() -> bool:
 def languages() -> tuple[str, ...]:
     """The languages the installed weights carry, or the package's list when nothing is downloaded yet."""
     path = weights_path()
-    if path and path.is_file():
-        try:
-            from cactus.agent.whistle import languages as _languages
+    if not (path and path.is_file()):
+        return LANGUAGES
+    key = str(path)
+    cached = _LANGUAGES_CACHE.get(key)
+    if cached is not None:
+        return cached
+    found = LANGUAGES
+    try:
+        from cactus.agent.whistle import languages as _languages
 
-            return tuple(_languages(str(path))) or LANGUAGES
-        except Exception:  # noqa: BLE001 - a weights file we cannot read is not a reason to fail
-            pass
-    return LANGUAGES
+        found = tuple(_languages(key)) or LANGUAGES
+    except Exception:  # noqa: BLE001 - a weights file we cannot read is not a reason to fail
+        found = LANGUAGES
+    _LANGUAGES_CACHE[key] = found  # reading the weights file is not something to repeat on every status call
+    return found
 
 
 def _ensure_weights() -> Path:
