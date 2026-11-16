@@ -478,18 +478,31 @@ def scribe_import_file(path: str, title: str = "", kind: str = "other", language
 
 @mcp.tool(annotations=_READ)
 def transcribe_file(path: str, language: str = "auto", model: Optional[str] = None, word_timestamps: bool = True,
-                    initial_prompt: str = "", vad: bool = True, wait_s: float = 0) -> dict:
+                    initial_prompt: str = "", vad: bool = True, wait_s: float = 0, engine: str = "auto") -> dict:
     """Speech to text of an audio/video file by path, no session kept. Transcribir un archivo.
 
-    Transcribes a file already on this computer (absolute path) and returns {job_id, status, progress, language,
-    duration_s, text, segments [{start_s, end_s, text, words}], model, device, note, stats}; with wait_s (max 150) it
-    waits for the result, otherwise poll transcribe_status. Nothing is stored in Funes: no session, no copy of the
-    file. For the user's own recordings use scribe_import_file.
-    Sinónimos: transcribir, pasar a texto, audio a texto, subtítulos de un vídeo, dictado, speech to text.
+    Transcribes a file on this computer (absolute path) and returns {job_id, status, progress, engine, language,
+    duration_s, text, segments, model, device, note, stats}; with wait_s (max 150) it waits, otherwise poll
+    transcribe_status. Nothing is stored in Funes: no session, no copy of the file. engine: auto (the settings
+    decide), whisper (faster-whisper) or whistle (the small CPU engine, ~17 MB, seven languages, a few hundred
+    milliseconds per short clip). For the user's own recordings use scribe_import_file.
+    Sinónimos: transcribir, pasar a texto, audio a texto, subtítulos, dictado, speech to text, motor de respaldo.
     """
     return _audio_call("transcribe_file", {"path": path, "language": language, "model": model, "word_timestamps": word_timestamps,
-                                            "initial_prompt": initial_prompt, "vad": vad, "wait_s": wait_s},
+                                            "initial_prompt": initial_prompt, "vad": vad, "wait_s": wait_s, "engine": engine},
                        timeout=90.0 + min(150.0, max(0.0, float(wait_s))))
+
+
+@mcp.tool(annotations=_READ)
+def transcribe_engines() -> dict:
+    """Which speech engines can transcribe here, their languages and what auto does. Motores de transcripción.
+
+    Lists faster-whisper and the small CPU engine (Whistle) with availability, device and languages, plus the rule auto
+    follows: clips up to whistle_short_s seconds go to Whistle first, and Whistle takes over when faster-whisper cannot
+    be loaded here. Read-only.
+    Sinónimos: motores de transcripción, qué motor usa, idiomas del reconocimiento, motor de respaldo, whisper o whistle, sin GPU.
+    """
+    return _audio_call("transcribe_engines", {})
 
 
 @mcp.tool(annotations=_READ)

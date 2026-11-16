@@ -611,12 +611,12 @@ def create_app(
 
     # ------------------------------------------- audio tools for the family --
     # Other Hoards reach Funes through the hub's proxy (POST /api/agent/call), which only
-    # knows this surface. Six audio tools are published on it: meeting minutes in two shapes
+    # knows this surface. Seven audio tools are published on it: meeting minutes in two shapes
     # (`scribe_minutes` in full, which People's Hoard turns into commitments, and `minutes_get`
     # in the compact shape the family's rules and apps ask for), import-by-path (a recipe or
     # class video becomes a session) and the family's speech-to-text service (`transcribe_file`,
-    # `transcribe_status`, `transcribe_cancel`: the text of a file for the app that asked, no
-    # session kept). The rest of the audio tools
+    # `transcribe_engines`, `transcribe_status`, `transcribe_cancel`: the text of a file for the app
+    # that asked, no session kept, with the small CPU engine as a fallback). The rest of the audio tools
     # (start, stop, delete...) stay on the stdio bridge, never on the family surface.
     if audio_app is not None:
         from funes_hoard.audio_memory import agent_tools as audio_tools
@@ -652,7 +652,8 @@ def create_app(
             endpoint.__name__ = f"agent_{tool_name}"
             return endpoint
 
-        for _tool in ("scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_status", "transcribe_cancel"):
+        for _tool in ("scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
+                      "transcribe_cancel"):
             app.add_api_route(f"/api/agent/{_tool}", _scribe_route(_tool), methods=["POST"])
 
     # --------------------------------------------------------- UI routes --

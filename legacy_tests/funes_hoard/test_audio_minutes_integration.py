@@ -73,9 +73,11 @@ def wait_for(predicate, timeout=20.0):
 def test_family_surface_lists_the_audio_tools_with_proper_descriptions(booted):
     catalogue = booted.client.get("/api/agent/tools").json()
     tools = {t["name"]: t for t in catalogue["tools"]}
-    assert {"scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_status", "transcribe_cancel"} <= set(tools)
-    assert len(tools) == 20  # fourteen activity tools plus six audio tools; start/stop/delete stay off the family surface
-    for name in ("scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_status", "transcribe_cancel"):
+    assert {"scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
+            "transcribe_cancel"} <= set(tools)
+    assert len(tools) == 21  # fourteen activity tools plus seven audio tools; start/stop/delete stay off the family surface
+    for name in ("scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
+                 "transcribe_cancel"):
         first = tools[name]["description"].split("\n")[0]
         assert len(first) <= 110 and "Sinónimos:" in tools[name]["description"]
     assert tools["scribe_minutes"]["inputSchema"]["required"] == ["session_id"]
