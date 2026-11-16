@@ -112,10 +112,32 @@ def test_a_queued_job_can_be_cancelled_and_never_runs(api):
 def test_no_model_is_a_503_with_its_own_code(api, monkeypatch):
     client, svc, tmp = api
     monkeypatch.setattr(svc.stt, "_available", lambda: False)
+    monkeypatch.setattr(svc.stt, "_whistle_available", lambda: False)
     r = call(client, "transcribe_file", path=str(wav(tmp)))
     assert r.status_code == 503 and "faster-whisper" in r.json()["error"]
     with pytest.raises(NoModel):
         svc.stt.submit(str(wav(tmp)))
+
+
+def test_without_faster_whisper_auto_transcribes_with_the_small_engine(api, monkeypatch):
+    client, svc, tmp = api
+    monkeypatch.setattr(svc.stt, "_available", lambda: False)
+    monkeypatch.setattr(svc.stt, "_whistle_available", lambda: True)
+    monkeypatch.setattr(svc.stt, "_whistle", lambda: _FakeWhistleEngine())
+    job = call(client, "transcribe_file", path=str(wav(tmp)), wait_s=20).json()
+    assert job["status"] == "done" and job["engine"] == "whistle"
+    assert job["text"].startswith("Necesitamos")
+
+
+class _FakeWhistleEngine:
+    """The small CPU engine without its model: the same transcript shape, one segment."""
+
+    def transcribe(self, path, *, language=None, word_timestamps=True, vad=True, initial_prompt="", progress=None, cancel=None):
+        from funes_hoard.hoard_link.media import stt
+
+        return stt.Transcript(language="es", duration_s=5.0, text="Necesitamos revisar el presupuesto.",
+                              segments=[{"start_s": 0.0, "end_s": 2.0, "text": "Necesitamos revisar el presupuesto.", "words": []}],
+                              model="whistle", device="cpu", stats={"engine": "whistle"})
 
 
 def test_the_per_tool_route_needs_the_token_and_is_in_the_catalogue(api):

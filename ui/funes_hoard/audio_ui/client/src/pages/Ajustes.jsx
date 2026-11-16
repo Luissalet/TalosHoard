@@ -17,6 +17,11 @@ const MODELS = [
 ];
 const COMPUTE = ["auto", "int8", "int8_float16", "float16", "float32"];
 const VAD = ["Permisivo", "Normal", "Estricto", "Muy estricto"];
+const ENGINES = [
+  { value: "auto", label: "auto — faster-whisper y, si no carga, Whistle" },
+  { value: "whisper", label: "faster-whisper — el preciso" },
+  { value: "whistle", label: "Whistle — pequeño y rápido en CPU" },
+];
 
 function Row({ label, help, children }) {
   return (
@@ -55,6 +60,14 @@ export default function Ajustes() {
           <select className="field field-sm" value={settings.model_size} onChange={(e) => save({ model_size: e.target.value })}>
             {MODELS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
           </select>
+        </Row>
+        <Row label="Motor" help={`auto usa faster-whisper y pasa a Whistle cuando no puede cargarse. Whistle es un modelo de unos 17 MB que reconoce español, inglés, alemán, francés, italiano, neerlandés y polaco en CPU. ${status.whistle_installed ? "Whistle instalado." : "Whistle no instalado (pip install cactus-compute)."}`}>
+          <select className="field field-sm" value={settings.engine} onChange={(e) => save({ engine: e.target.value })}>
+            {ENGINES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+          </select>
+        </Row>
+        <Row label="Whistle para audios cortos" help="Con 0, Whistle solo se usa si faster-whisper no está. Con otro valor, los audios de hasta esos segundos se transcriben con Whistle primero, que tarda décimas de segundo.">
+          <input type="number" className="field field-sm w-24 text-right num" min={0} max={600} value={settings.whistle_short_s} onChange={(e) => save({ whistle_short_s: Number(e.target.value) })} />
         </Row>
         <Row label="Estado del modelo" help={`${t.model} · ${t.models_dir || status.models_dir}${t.error ? ` · error: ${t.error}` : ""}`}>
           <span className={`chip ${download[0]}`}>{download[1]}</span>

@@ -14,12 +14,15 @@ DeviceName = Literal["auto", "cuda", "cpu"]
 ComputeType = Literal["auto", "int8", "int8_float16", "float16", "float32"]
 Language = Literal["auto", "es", "en"]
 Kind = Literal["meeting", "interview", "note", "other"]
+Engine = Literal["auto", "whisper", "whistle"]
 
 
 class Settings(BaseModel):
     model_size: ModelSize = "small"
     device: DeviceName = "auto"
     compute_type: ComputeType = "auto"
+    engine: Engine = "auto"  # auto = faster-whisper, Whistle when it cannot load; whistle = the small CPU engine only
+    whistle_short_s: int = Field(0, ge=0, le=600)  # clips up to this many seconds go to Whistle first; 0 = never
     default_language: Language = "auto"
     default_kind: Kind = "meeting"
     default_source_mic: bool = True
@@ -38,6 +41,8 @@ class SettingsPatch(BaseModel):
     model_size: ModelSize | None = None
     device: DeviceName | None = None
     compute_type: ComputeType | None = None
+    engine: Engine | None = None
+    whistle_short_s: int | None = Field(None, ge=0, le=600)
     default_language: Language | None = None
     default_kind: Kind | None = None
     default_source_mic: bool | None = None

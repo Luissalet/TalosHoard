@@ -1,11 +1,20 @@
 # Talos's Hoard: ficha para Faustus
 
 ## Qué añade esta versión
+- Voz a texto de respaldo en CPU (`transcribe_engines`, `transcribe_file` con `engine`; ajustes «Motor» y «Whistle para audios cortos»).
 - Reuniones a requisitos y pendientes (`scribe_requirements`, `scribe_requirement_link`; REST bajo `/audio/api/sessions/{id}/requirements`).
 - Observación de pantalla a borrador de procedimiento (`activity_procedure_draft`; REST `POST /activity/api/procedure/draft`).
 - Página `/static/analysis.html` (castellano e inglés) con ambas vistas.
 - El catálogo de `/api/agent/tools` pasa a 107 herramientas.
 - En Disco, la carpeta actual y el espacio libre de la barra de rutas seleccionan la ruta completa para copiarla con `Ctrl+C`.
+
+## Voz a texto de respaldo
+- Dos motores: faster-whisper (el preciso, GPU cuando la hay) y Whistle, un modelo de unos 17 MB que reconoce español, inglés, alemán, francés, italiano, neerlandés y polaco en CPU en décimas de segundo por audio corto.
+- En Ajustes, «Motor» elige `auto`, `whisper` o `whistle`; `auto` usa faster-whisper y pasa a Whistle cuando no puede cargarse. «Whistle para audios cortos» fija los segundos por debajo de los cuales se transcribe con Whistle primero (0 = solo como respaldo).
+- `transcribe_file` acepta `engine` por trabajo y devuelve `engine` junto al texto, los segmentos y las palabras con sus tiempos; `transcribe_engines` dice qué motores hay, sus idiomas y qué hace `auto`.
+- El motor elegido se aplica también a las grabaciones e importaciones de sesiones, no solo a la API.
+- El modelo se descarga una vez y se guarda en la caché del paquete; `FUNES_WHISTLE_WEIGHTS` apunta a un fichero ya descargado. El contador anónimo del paquete queda desactivado salvo que se ponga `CACTUS_TELEMETRY`.
+- Se instala aparte: `pip install cactus-compute` (o el extra `whistle`). Sin él, todo sigue funcionando con faster-whisper.
 
 ## Reuniones
 - Reglas lingüísticas deterministas, sin modelo, en castellano e inglés: compromiso firme, propuesta, pregunta abierta (con quién debe responder), decisión y requisito.

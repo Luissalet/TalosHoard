@@ -24,8 +24,9 @@ from funes_hoard.hoard_link.media import stt
 from funes_hoard.hoard_link.tokens import read_or_create_token
 
 from .stt_jobs import SttJobs
-from .transcribe import select_transcriber, whisper_available
+from .transcribe import select_transcriber, whisper_available, whistle_available
 from .transcribe.fake import FakeWhisperModel
+from .transcribe.whistle import WhistleEngine, WhistleTranscriber
 from .transcribe.whisper import WhisperTranscriber
 from .vad import HAVE_WEBRTCVAD
 from funes_hoard.hoard_link import family
@@ -55,12 +56,16 @@ class Services:
         self.worker = TranscriptionWorker()
         s = self.settings.get()
         self.backend, self.notes = select_backend(config.audio_backend, config.fake_fixture, config.fake_speed)
-        self.transcriber, notes = select_transcriber(config.transcriber, config.models_dir, s.model_size, s.device, s.compute_type)
+        self.transcriber, notes = select_transcriber(config.transcriber, config.models_dir, s.model_size, s.device, s.compute_type,
+                                                     s.engine)
         self.notes += notes
         for note in self.notes:
             log.info("backend: %s", note)
         self._fake_engine: stt.Transcriber | None = None
-        self.stt = SttJobs(self.worker, self._stt_engine, self._stt_engine_for, self._stt_available)
+        self._whistle: WhistleEngine | None = None
+        self.stt = SttJobs(self.worker, self._stt_engine, self._stt_engine_for, self._stt_available,
+                           whistle=self._whistle_engine, whistle_available=whistle_available,
+                           short_s=lambda: self.settings.get().whistle_short_s)
         self.pipeline = Pipeline(self.sessions, self.transcriber, self.worker, self.bus, self.settings)
         self.importer = Importer(self.sessions, self.pipeline)
         self.recorder = Recorder(self.backend, self.settings, self.sessions, self.transcriber, self.worker, self.bus)
@@ -91,6 +96,12 @@ class Services:
     def _stt_available(self) -> bool:
         return not isinstance(self.transcriber, WhisperTranscriber) or stt.available()
 
+    def _whistle_engine(self) -> WhistleEngine:
+        """The small CPU engine, one instance for the whole process (the model is loaded on first use)."""
+        if self._whistle is None:
+            self._whistle = WhistleEngine()
+        return self._whistle
+
     def _transcribed(self, session_id: str) -> None:
         """A final pass finished: the old minutes (if any) describe replaced text, so write new ones when wanted."""
         self.minutes.discard(session_id)
@@ -120,15 +131,35 @@ class Services:
         self.chapters.close()
         if isinstance(self.transcriber, WhisperTranscriber):
             self.transcriber.engine.close()
+        if isinstance(self.transcriber, WhistleTranscriber):
+            self.transcriber.engine.close()
+        if self._whistle is not None:
+            self._whistle.close()
         if self._fake_engine is not None:
             self._fake_engine.close()
         self.db.close()
 
     # ---------- settings ----------
     def update_settings(self, patch: SettingsPatch | dict):
+        before = self.settings.get()
         merged = self.settings.update(patch)
+        if merged.engine != before.engine:
+            self._switch_engine(merged)
         self.transcriber.reconfigure(size=merged.model_size, device=merged.device, compute_type=merged.compute_type)
         return merged
+
+    def _switch_engine(self, settings) -> None:
+        """The person changed the engine: build the new session transcriber and hand it to the recorder and the pipeline."""
+        transcriber, notes = select_transcriber(self.config.transcriber, self.config.models_dir, settings.model_size, settings.device,
+                                                settings.compute_type, settings.engine)
+        if isinstance(self.transcriber, WhisperTranscriber):
+            self.transcriber.engine.close()
+        self.transcriber = transcriber
+        self.pipeline.transcriber = transcriber
+        self.recorder.transcriber = transcriber
+        self.notes += notes
+        for note in notes:
+            log.info("engine: %s", note)
 
     def preload_model(self) -> None:
         self.worker.submit("load model", self.transcriber.ensure_loaded)
@@ -148,6 +179,8 @@ class Services:
             "devices": self.backend.devices().as_dict(),
             "transcriber": self.transcriber.info(),
             "whisper_installed": whisper_available(),
+            "whistle_installed": whistle_available(),
+            "engines": self.stt.engines(),
             "vad": "webrtcvad" if HAVE_WEBRTCVAD else "energy",
             "ffmpeg": ffmpeg_path(),
             "pyav": pyav_available(),

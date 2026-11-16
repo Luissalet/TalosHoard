@@ -36,6 +36,7 @@ The native interfaces live under `/screen/`, `/clipboard/`, `/activity/`, `/audi
 
 **Audio**
 - Live and final transcription of microphone and system audio, import and export, search, notes and tags.
+- Two speech engines: faster-whisper (accurate, GPU when there is one) and Whistle, a ~17 MB CPU model for Spanish, English, German, French, Italian, Dutch and Polish that decodes a short clip in a fraction of a second. Settings pick one (`auto`, `whisper`, `whistle`) and how many seconds of audio go to Whistle first; `transcribe_file` takes `engine` per job and `transcribe_engines` lists what is available. Whistle is installed separately (`pip install cactus-compute`).
 - Echo clean-up removes microphone lines that only repeat what the other track said; meetings of three minutes or more are split into chapters by the global model, shown in the session page, on the waveform, in the minutes and in exports.
 - **Meeting to requirements**: every sentence is cut into clauses and labelled by Spanish and English linguistic rules as a firm commitment (owner, counterpart and due day only when the words say them), proposal, open question, decision or requirement, each with the exact cue and the source audio segment. "Could", "maybe" and every conditional are proposals, never commitments. Items can be tied to an engagement reference and exported as Markdown, JSON or as commitments for the people app.
 - A transcription bench runs recordings with a known script through the configured engine and scores found words, correct side, leaked echo and invented lines.
