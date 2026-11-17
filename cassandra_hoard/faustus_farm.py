@@ -12,9 +12,10 @@ most once a second, with an ETag); this module reads it with a read-only token
 Token: ``CASSANDRA_FAUSTUS_FARM_TOKEN`` or the file ``<data>/faustus-farm-token``
 (mint it in Faustus, Settings, API tokens, scope "Farm"). Without either, the
 attention token is tried (it works when it also carries ``farm:read``).
-Address: ``CASSANDRA_FAUSTUS_URL`` (loopback only). Nothing is written to
-Faustus and nothing leaves this machine. The document carries chat and task
-*names*, never what anyone typed.
+Address: ``CASSANDRA_FAUSTUS_URL`` (default loopback), then the address the Hub
+reports when Faustus runs on a Spark; only this machine or the owner's tailnet
+(``*.ts.net``, ``100.64.0.0/10``) is ever sent the token. Nothing is written to
+Faustus. The document carries chat and task *names*, never what anyone typed.
 """
 
 from __future__ import annotations
@@ -38,11 +39,11 @@ TOKEN_FILE = "faustus-farm-token"
 
 NOTES = {
     "no_token": "Set CASSANDRA_FAUSTUS_FARM_TOKEN or write a Faustus API token with scope farm:read to data/faustus-farm-token (Settings, API tokens, Farm).",
-    "unreachable": "Faustus did not answer (is it running?).",
+    "unreachable": "Faustus did not answer on this PC or where the Hub placed it (is it running?).",
     "forbidden": "Faustus refused the token: it needs the farm:read (or sessions) scope.",
     "old_faustus": "This Faustus has no /api/farm/state yet: restart it on the current code.",
     "bad_answer": "Faustus answered something that is not the farm state.",
-    "bad_url": "Faustus URL must be a loopback address.",
+    "bad_url": "Faustus URL must be this machine or an address of your tailnet (*.ts.net or 100.64.0.0/10).",
 }
 
 
@@ -61,13 +62,13 @@ def read_token(data_dir: Path) -> str:
 def fetch(url: str, token: str, *, etag: Optional[str] = None,
           transport: Optional[httpx.BaseTransport] = None) -> tuple[Optional[int], Any, Optional[str]]:
     """``(status, json, etag)``; status None = could not connect. Never raises."""
-    if not faustus_attention._is_loopback(url):
+    if not faustus_attention.is_allowed(url):
         return -1, {"error": NOTES["bad_url"]}, None
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     if etag:
         headers["If-None-Match"] = etag
     try:
-        with httpx.Client(timeout=TIMEOUT_S, transport=transport) as client:
+        with httpx.Client(timeout=faustus_attention.timeout_for(url), transport=transport) as client:
             resp = client.get(f"{url}{STATE_PATH}", headers=headers)
     except Exception:  # noqa: BLE001 - absent Faustus is an answer, not an error
         return None, None, None
@@ -82,6 +83,8 @@ class FarmReader:
     """Reads Faustus's document, at most once per ``min_interval_s`` and with
     ``If-None-Match`` so an unchanged picture costs a 304. Every watcher of the
     panel and the assistant share one reader, so ten open tabs are one request.
+    The configured address is asked first and the one the Hub placed Faustus on
+    (a Spark) next; the ETag is remembered per address.
     """
 
     def __init__(self, *, min_interval_s: float = MIN_INTERVAL_S,
@@ -93,29 +96,39 @@ class FarmReader:
         self._lock = threading.Lock()
         self._key: Optional[str] = None
         self._at = 0.0
-        self._etag: Optional[str] = None
-        self._state: Optional[dict[str, Any]] = None
+        self._seen: dict[str, tuple[Optional[str], dict[str, Any]]] = {}  # address -> (etag, state)
         self._result: Optional[dict[str, Any]] = None
 
     def read(self, data_dir: Path, *, url: Optional[str] = None, token: Optional[str] = None) -> dict[str, Any]:
+        given = bool(url)
         url = (url or faustus_attention.faustus_url()).rstrip("/")
         token = read_token(data_dir) if token is None else token
         if not token:
             return {"ok": False, "url": url, "reason": "no_token", "note": NOTES["no_token"]}
-        key = url + "|" + hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
+        key = url + "|" + hashlib.sha256(token.encode("utf-8")).hexdigest()[:16] + ("|pinned" if given else "")
         with self._lock:
             if key != self._key:
-                self._key, self._etag, self._state, self._result, self._at = key, None, None, None, 0.0
+                self._key, self._seen, self._result, self._at = key, {}, None, 0.0
             if self._result is not None and self._mono() - self._at < self.min_interval_s:
                 return self._result
-            status, data, etag = fetch(url, token, etag=self._etag if self._state else None, transport=self.transport)
-            result = self._interpret(url, status, data, etag)
+
+            def ask(candidate: str) -> tuple[Optional[int], Any, Optional[str]]:
+                etag, state = self._seen.get(candidate, (None, None))
+                return fetch(candidate, token, etag=etag if state else None, transport=self.transport)
+
+            if given:  # an address given on purpose is the only one asked
+                answered, (status, data, etag), tried = url, ask(url), [url]
+            else:
+                answered, (status, data, etag), tried = faustus_attention.probe([url], ask)
+            result = self._interpret(answered, status, data, etag)
+            if not result.get("ok") and len(tried) > 1:
+                result["tried"] = tried
             self._result, self._at = result, self._mono()
             return result
 
     def _interpret(self, url: str, status: Optional[int], data: Any, etag: Optional[str]) -> dict[str, Any]:
         def fail(reason: str, **extra: Any) -> dict[str, Any]:
-            self._etag, self._state = None, None
+            self._seen.pop(url, None)
             return {"ok": False, "url": url, "reason": reason, "note": NOTES[reason], **extra}
 
         if status is None:
@@ -126,11 +139,12 @@ class FarmReader:
             return fail("forbidden", status=status)
         if status == 404:
             return fail("old_faustus", status=status)
-        if status == 304 and self._state is not None:
-            return {"ok": True, "url": url, "state": self._state, "etag": self._etag, "unchanged": True}
+        kept = self._seen.get(url)
+        if status == 304 and kept is not None:
+            return {"ok": True, "url": url, "state": kept[1], "etag": kept[0], "unchanged": True}
         if status != 200 or not isinstance(data, dict) or not isinstance(data.get("items"), list):
             return fail("bad_answer", status=status)
-        self._state, self._etag = data, etag
+        self._seen[url] = (etag, data)
         return {"ok": True, "url": url, "state": data, "etag": etag, "unchanged": False}
 
 
@@ -312,7 +326,7 @@ def report(data_dir: Path, *, include_budget: bool = True, url: Optional[str] = 
     with the reason Faustus could not be read."""
     res = (reader or _READER).read(data_dir, url=url, token=token)
     if not res.get("ok"):
-        return {k: res[k] for k in ("ok", "url", "reason", "note", "status") if k in res}
+        return {k: res[k] for k in ("ok", "url", "tried", "reason", "note", "status") if k in res}
     out = summarize(res["state"], clock(), include_budget=include_budget, base=res["url"])
     out.update({"ok": True, "url": res["url"]})
     return out

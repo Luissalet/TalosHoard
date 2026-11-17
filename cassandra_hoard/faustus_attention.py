@@ -9,12 +9,17 @@ turns it into a short report the assistant and the panel can quote.
 
 Token: ``CASSANDRA_FAUSTUS_TOKEN`` or the file ``<data>/faustus-token``
 (mint one in Faustus, Settings, API tokens, scope "Attention"). Address:
-``CASSANDRA_FAUSTUS_URL`` (default ``http://127.0.0.1:7000``). Nothing is
-written to Faustus; nothing is sent anywhere but that loopback address.
+``CASSANDRA_FAUSTUS_URL`` (default ``http://127.0.0.1:7000``). When that
+address does not answer, the one the Hub reports for Faustus (the "Run on"
+placement: Faustus on a Spark) is tried next, so the report follows Faustus
+wherever it lives. Nothing is written to Faustus, and the token is sent only
+to this machine or to an address of the owner's tailnet (``*.ts.net`` or
+``100.64.0.0/10``).
 """
 
 from __future__ import annotations
 
+import ipaddress
 import os
 import threading
 import time
@@ -24,9 +29,14 @@ from urllib.parse import urlsplit
 
 import httpx
 
+from .hoard_link import where
+
 DEFAULT_URL = "http://127.0.0.1:7000"
 TIMEOUT_S = 3.0
+REMOTE_TIMEOUT_S = 8.0  # a Spark over the tailnet (TLS, a relay) answers slower than loopback
 LOOPBACK = {"127.0.0.1", "localhost", "::1", "[::1]"}
+TAILNET_SUFFIX = ".ts.net"
+TAILNET_V4 = ipaddress.ip_network("100.64.0.0/10")
 
 KIND_LABEL = {
     "approval": "waiting for an approval",
@@ -57,14 +67,74 @@ def _is_loopback(url: str) -> bool:
     return (urlsplit(url).hostname or "").lower() in LOOPBACK
 
 
+def is_tailnet(url: str) -> bool:
+    """A ``*.ts.net`` name or an address in the tailnet range ``100.64.0.0/10``."""
+    host = (urlsplit(url).hostname or "").lower().rstrip(".")
+    if host.endswith(TAILNET_SUFFIX) and len(host) > len(TAILNET_SUFFIX):
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return addr.version == 4 and addr in TAILNET_V4
+
+
+def is_allowed(url: str) -> bool:
+    """Where the read-only token may be sent: this machine or the owner's tailnet."""
+    return _is_loopback(url) or is_tailnet(url)
+
+
+def timeout_for(url: str) -> float:
+    return TIMEOUT_S if _is_loopback(url) else REMOTE_TIMEOUT_S
+
+
+def probe(configured: list[str], fetch_one: Callable[[str], tuple]) -> tuple[str, tuple, list[str]]:
+    """Ask the configured address, then the one the Hub placed Faustus on.
+
+    ``fetch_one(url)`` returns a tuple whose first item is the HTTP status
+    (``None``: could not connect, ``-1``: address not allowed). The first
+    address that answers wins, whatever its status: a refused token is an
+    answer. Returns ``(url, result, tried)``; when nothing answered, the
+    result is that of the first address that could not be reached (else the
+    first one refused as not allowed).
+    """
+    tried: list[str] = []
+    silent: Optional[tuple[str, tuple]] = None
+    refused: Optional[tuple[str, tuple]] = None
+
+    def attempt(urls: list[str]) -> Optional[tuple[str, tuple]]:
+        nonlocal silent, refused
+        for url in urls:
+            if url in tried:
+                continue
+            tried.append(url)
+            result = fetch_one(url)
+            if result[0] is None:
+                silent = silent or (url, result)
+            elif result[0] == -1:
+                refused = refused or (url, result)
+            else:
+                return url, result
+        return None
+
+    hit = attempt(configured)
+    if hit is None:
+        # Only now ask the Hub: Faustus on this PC never costs a placement lookup.
+        hit = attempt(where.faustus_urls(configured))
+    if hit is not None:
+        return hit[0], hit[1], tried
+    url, result = silent or refused or (configured[0], fetch_one(configured[0]))
+    return url, result, tried
+
+
 def fetch(url: str, token: str, *, transport: Optional[httpx.BaseTransport] = None,
           limit: int = 50) -> tuple[Optional[int], Any]:
     """``(status, json)``; status None = could not connect. Never raises."""
-    if not _is_loopback(url):
-        return -1, {"error": "Faustus URL must be a loopback address"}
+    if not is_allowed(url):
+        return -1, {"error": "Faustus URL must be this machine or an address of your tailnet"}
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     try:
-        with httpx.Client(timeout=TIMEOUT_S, transport=transport) as client:
+        with httpx.Client(timeout=timeout_for(url), transport=transport) as client:
             resp = client.get(f"{url}/api/attention", params={"limit": limit}, headers=headers)
     except Exception:  # noqa: BLE001 - absent Faustus is an answer, not an error
         return None, None
@@ -121,14 +191,24 @@ def summarize(runs: Any, now: float, *, wait_min: float = 10.0) -> dict[str, Any
 def report(data_dir: Path, *, wait_min: float = 10.0, url: Optional[str] = None,
            token: Optional[str] = None, transport: Optional[httpx.BaseTransport] = None,
            clock: Callable[[], float] = time.time) -> dict[str, Any]:
-    url = (url or faustus_url()).rstrip("/")
+    configured = [(url or faustus_url()).rstrip("/")]
     token = read_token(data_dir) if token is None else token
     if not token:
-        return {"ok": False, "url": url, "reason": "no_token",
+        return {"ok": False, "url": configured[0], "reason": "no_token",
                 "note": "Set CASSANDRA_FAUSTUS_TOKEN or write a Faustus API token with scope attention:read to data/faustus-token."}
-    status, data = fetch(url, token, transport=transport)
+    if url:  # an address given on purpose is the only one asked
+        status, data = fetch(configured[0], token, transport=transport)
+        tried = configured
+    else:
+        url, (status, data), tried = probe(configured, lambda u: fetch(u, token, transport=transport))
+        configured = [url]
+    url = configured[0]
     if status is None:
-        return {"ok": False, "url": url, "reason": "unreachable", "note": "Faustus did not answer (is it running?)."}
+        return {"ok": False, "url": url, "tried": tried, "reason": "unreachable",
+                "note": "Faustus did not answer on this PC or where the Hub placed it (is it running?)."}
+    if status == -1:
+        return {"ok": False, "url": url, "tried": tried, "reason": "bad_url",
+                "note": "Faustus URL must be this machine or an address of your tailnet (*.ts.net or 100.64.0.0/10)."}
     if status in (401, 403):
         return {"ok": False, "url": url, "reason": "forbidden", "status": status,
                 "note": "Faustus refused the token: it needs the attention:read (or sessions) scope."}
