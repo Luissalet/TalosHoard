@@ -5,6 +5,7 @@
 - Reuniones a requisitos y pendientes (`scribe_requirements`, `scribe_requirement_link`; REST bajo `/audio/api/sessions/{id}/requirements`).
 - Observación de pantalla a borrador de procedimiento (`activity_procedure_draft`; REST `POST /activity/api/procedure/draft`).
 - Página `/static/analysis.html` (castellano e inglés) con ambas vistas.
+- `faustus_attention` y `faustus_farm` (y la tarjeta de la granja del panel) siguen a Faustus cuando corre en una Spark: prueban `CASSANDRA_FAUSTUS_URL` y luego la dirección que publica el Hub, y aceptan direcciones de la tailnet (`*.ts.net`, `100.64.0.0/10`) además de loopback. El resultado trae `url` (la que contestó) y, si ninguna contesta, `tried`.
 - El catálogo de `/api/agent/tools` pasa a 107 herramientas.
 - En Disco, la carpeta actual y el espacio libre de la barra de rutas seleccionan la ruta completa para copiarla con `Ctrl+C`.
 
