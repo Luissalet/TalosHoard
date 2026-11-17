@@ -124,8 +124,11 @@ def test_disk_adapter_keeps_the_original_disk_assistant_identity(tmp_path, monke
         assert info['data_space_id']=='saved-disk-space'
 
 
-def test_audio_builds_with_the_shared_funes_identity_before_native_spa(synthetic):
+def test_audio_builds_with_the_shared_funes_identity_before_native_spa(synthetic, monkeypatch):
     import sys
+    # Other tests in the same process may already have imported the audio services; forget them so
+    # the assertion below measures only what building the audio module imports.
+    monkeypatch.delitem(sys.modules, 'funes_hoard.audio_memory.services', raising=False)
     from funes_hoard.hoard_link import family
     app, client, paths, requests = synthetic
     family.configure('synthetic-unrelated', str(app.state.data_dir/'unrelated'), token_file=str(app.state.data_dir/'unrelated/mcp-token'))

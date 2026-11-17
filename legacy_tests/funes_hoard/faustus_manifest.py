@@ -19,12 +19,13 @@ SCHEMA = 1
 TOP_LEVEL_KEYS = {
     "schema", "id", "name", "purpose", "capabilities",
     "app", "mcp", "placeholders", "defaults", "provides", "notes",
-    "x-family",
+    "x-family", "data_language", "skills",
 }
 APP_KEYS = {"url_default", "ui_url", "health", "identify", "launch_hint"}
 MCP_KEYS = {"transport", "command", "args", "env", "optional_env"}
 HEALTH_KEYS = {"path", "expect"}
 PROVIDES_KEYS = {"skills", "recipes", "knowledge"}
+SKILLS_KEYS = {"slugs", "tags", "categories", "limit"}
 
 
 class ManifestError(ValueError):
@@ -112,6 +113,16 @@ def validate(data: Any) -> Dict[str, Any]:
 
     provides = data.get("provides") or {}
     _unknown(provides, PROVIDES_KEYS, "'provides'")
+
+    wanted = data.get("skills") or {}
+    _unknown(wanted, SKILLS_KEYS, "'skills'")
+    for key in ("slugs", "tags", "categories"):
+        _str_list(wanted.get(key), f"'skills.{key}'")
+    limit = wanted.get("limit")
+    if limit is not None and (not isinstance(limit, int) or isinstance(limit, bool) or limit < 0):
+        raise ManifestError("'skills.limit' must be a whole number, zero or more")
+    if not isinstance(data.get("data_language") or "", (str, list)):
+        raise ManifestError("'data_language' must be a string or a list of codes")
     if not isinstance(data.get("notes") or "", str):
         raise ManifestError("'notes' must be a string")
 
