@@ -18,7 +18,7 @@ def make(tmp_path, **site):
     h = Harness(tmp_path)
     events = []
     h.services.seo.emit = lambda t, d: events.append((t, d))
-    entry = {"url": "https://luissalet.github.io/Portfolio/", "id": "portfolio", "name": "Portfolio", "seo_interval_h": 24, **site}
+    entry = {"url": "https://portfolio.example.test/Portfolio/", "id": "portfolio", "name": "Portfolio", "seo_interval_h": 24, **site}
     site_ = h.services.sites.store.upsert(entry)[0]
     return h, h.services.seo, site_, events
 
@@ -65,7 +65,7 @@ def test_a_finding_without_id_is_the_same_by_category_and_title():
     assert compare(one, two)["new"] == [] and compare(one, two)["resolved"] == []
 
 
-# -- the real envelope of Vitruvius's site_audit (schema site-audit/1, a run on a public site, trimmed to the fields of the contract) ---
+# -- the real envelope of Vitruvius's site_audit (schema site-audit/1, a redacted run on a public site, trimmed to the fields of the contract) ---
 
 def real_envelope():
     return json.loads((Path(__file__).parent / "fixtures" / "site_audit_envelope.json").read_text(encoding="utf-8"))
@@ -147,7 +147,7 @@ def test_the_schedule_fields_exist_only_when_set():
 def test_only_opted_in_sites_are_audited_and_each_one_when_its_time_comes(tmp_path):
     h, seo, site, events = make(tmp_path)
     h.services.sites.store.upsert({"url": "https://plain.example/", "id": "plain"})
-    assert seo.tick() == ["portfolio"] and h.audit.calls == ["https://luissalet.github.io/Portfolio/"]
+    assert seo.tick() == ["portfolio"] and h.audit.calls == ["https://portfolio.example.test/Portfolio/"]
     assert seo.tick() == []  # not due again
     h.clock.advance(23 * 3600)
     assert seo.tick() == []
