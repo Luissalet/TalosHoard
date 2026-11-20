@@ -105,7 +105,7 @@ def seed_demo_data(db: Database, now: Optional[float] = None) -> int:
         commit_ts = day_start + day * 86400.0 + 3 * 3600.0
         db.execute(
             "INSERT OR IGNORE INTO commits(ts, repo, sha, subject, author) VALUES (?, ?, ?, ?, ?)",
-            (commit_ts, project, f"demo{day}sha{random.randint(1000,9999)}", f"feat: iterate on {project} demo module", "Luissalet"),
+            (commit_ts, project, f"demo{day}sha{random.randint(1000,9999)}", f"feat: iterate on {project} demo module", "Demo contributor"),
         )
         db.execute(
             "INSERT INTO file_events(ts, path, app_hint) VALUES (?, ?, ?)",

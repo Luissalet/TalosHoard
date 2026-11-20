@@ -39,7 +39,7 @@ def put(path, size=1000):
 
 def build_profile(base):
     """Un perfil de Windows de mentira con la estructura real de cada herramienta."""
-    home = base / "Users" / "user"
+    home = base / "Users" / "test-reader"
     roaming = home / "AppData" / "Roaming"
     local = home / "AppData" / "Local"
     # Claude Code
