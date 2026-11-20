@@ -1,6 +1,6 @@
 # Consolidated module controls
 
-Mode: Operate. This is an extension of the existing Hoard interfaces, with the family's visual system explicitly required by Luis. Preserve the canonical charcoal surface ladder, Cinzel product lettering, Source Sans 3 body, one accent per product, circular dragon/domain icon, left navigation and the shared Faustus launcher. Talos bronze; Hermes teal. The icon is derived from the existing family reference assets, not a new visual language.
+Mode: Operate. This is an extension of the existing Hoard interfaces, with the family's established visual system. Preserve the canonical charcoal surface ladder, Cinzel product lettering, Source Sans 3 body, one accent per product, circular dragon/domain icon, left navigation and the shared Faustus launcher. Talos bronze; Hermes teal. The icon is derived from the existing family reference assets, not a new visual language.
 
 First viewport: show the product identity, the Functions heading, the real all-OFF state and directly operable module switches. No marketing, hero, invented numbers, testimonials or decorative dashboards. Controls form quiet rows with the native module origin as secondary context. Sidebar links locate the same rows. The explicit ON/OFF transition is the signature interaction; state reflects completed native startup/shutdown and focus returns to the changed switch.
 
