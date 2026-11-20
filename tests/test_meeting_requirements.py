@@ -355,7 +355,7 @@ def test_a_log_without_clicks_or_keys_says_so_and_still_detects_a_copy_then_type
     ("ghp_abcdefghijklmnopqrstuvwxyz0123456789", "", "known token format"), ("sk-abcdefghijklmnopqrstuvwx12345", "", "known token format"),
     ("4111 1111 1111 1111", "", "card number"), ("anything", "Password", "field «Password»"), ("anything", "", ""), ("x", "", ""),
     ("Hunter2!x9", "", "password-like string"), ("compras@acme.example", "", ""), ("https://acme.example/pedido/4471", "", ""), ("2026-10-02", "", ""),
-    ("ACME S.L.", "", ""), ("C:\\Users\\luis\\Pedidos.xlsx", "", ""), ("Marta", "", ""),
+    ("ACME S.L.", "", ""), ("C:\\Users\\test-reader\\Pedidos.xlsx", "", ""), ("Marta", "", ""),
 ])
 def test_secret_detection(value, label, expected):
     assert procedure.secret_reason(value, label) == expected

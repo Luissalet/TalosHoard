@@ -10,7 +10,7 @@ from cassandra_hoard.hoard_link import family
 from cassandra_hoard.notifications import BoopNotifier
 from cassandra_hoard.seo_watch import EV_CRITICAL, EV_DROP
 
-URL = "https://luissalet.github.io/Portfolio/"
+URL = "https://portfolio.example.test/Portfolio/"
 CRITICAL = {"id": "noindex", "severity": "critical", "title": "The home page is set to noindex", "category": "technical"}
 
 
