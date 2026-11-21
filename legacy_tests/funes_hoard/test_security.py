@@ -107,7 +107,15 @@ def test_agent_surface_is_exactly_the_fourteen_tools_plus_seven_audio_tools(clie
 def test_shared_contract_dispatches_the_same_tools(client, tmp_path):
     cat = client.get("/api/agent/tools").json()
     names = {t["name"] for t in cat["tools"]}
-    assert {"recall", "activity_now", "activity_agents_day"} <= names and len(names) == 21
+    assert {"recall", "activity_now", "activity_agents_day"} <= names
+    registered = {
+        route.path.removeprefix("/api/agent/")
+        for route in client.app.routes
+        if getattr(route, "path", "").startswith("/api/agent/")
+        and "POST" in (getattr(route, "methods", None) or ())
+        and route.path != "/api/agent/call"
+    }
+    assert sorted(t["name"] for t in cat["tools"]) == sorted(registered)
     assert {"scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
             "transcribe_cancel"} <= names and not any(n in names for n in ("scribe_delete", "scribe_start", "scribe_stop"))
     assert client.post("/api/agent/call", json={"name": "activity_now", "arguments": {}}, headers={"Authorization": ""}).status_code == 401

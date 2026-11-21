@@ -75,7 +75,14 @@ def test_family_surface_lists_the_audio_tools_with_proper_descriptions(booted):
     tools = {t["name"]: t for t in catalogue["tools"]}
     assert {"scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
             "transcribe_cancel"} <= set(tools)
-    assert len(tools) == 21  # fourteen activity tools plus seven audio tools; start/stop/delete stay off the family surface
+    registered = {
+        route.path.removeprefix("/api/agent/")
+        for route in booted.client.app.routes
+        if getattr(route, "path", "").startswith("/api/agent/")
+        and "POST" in (getattr(route, "methods", None) or ())
+        and route.path != "/api/agent/call"
+    }
+    assert sorted(t["name"] for t in catalogue["tools"]) == sorted(registered)
     for name in ("scribe_minutes", "minutes_get", "scribe_import_file", "transcribe_file", "transcribe_engines", "transcribe_status",
                  "transcribe_cancel"):
         first = tools[name]["description"].split("\n")[0]
