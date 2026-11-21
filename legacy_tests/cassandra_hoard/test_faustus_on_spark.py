@@ -8,7 +8,8 @@ from cassandra_hoard.hoard_link import where
 
 NOW = 1_800_000_000.0
 LOCAL = "http://127.0.0.1:7000"
-SPARK = "https://spark3.example-tailnet.ts.net"
+SPARK_HOST = "spark3.example.ts.net"
+SPARK = f"https://{SPARK_HOST}"
 RUNS = [{"session_id": "s1", "kind": "approval", "label": "Fix the build", "since": NOW - 45 * 60}]
 FARM = {"schema": 1, "generated_at": NOW, "counts": {"total": 0}, "items": []}
 
@@ -49,8 +50,8 @@ def _transport(alive, *, seen):
     ("http://127.0.0.1:7000", True),
     ("http://localhost:7000", True),
     ("http://[::1]:7000", True),
-    ("https://spark3.example-tailnet.ts.net", True),
-    ("https://SPARK3.example-tailnet.ts.net:8443/x", True),
+    (SPARK, True),
+    (f"https://{SPARK_HOST.upper()}:8443/x", True),
     ("http://100.64.0.1:7000", True),
     ("http://100.100.100.100:7000", True),
     ("http://100.127.255.254:7000", True),
@@ -61,7 +62,7 @@ def _transport(alive, *, seen):
     ("https://example.com", False),
     ("https://ts.net", False),
     ("https://evilts.net", False),
-    ("https://spark3.example-tailnet.ts.net.evil.com", False),
+    (f"{SPARK}.evil.com", False),
     ("https://user@evil.com#.ts.net", False),
 ])
 def test_only_this_machine_and_the_tailnet_are_allowed(url, ok):
@@ -77,9 +78,9 @@ def test_a_spark_gets_a_longer_timeout_than_loopback():
 def test_attention_reads_faustus_on_the_spark_when_it_is_not_on_this_pc(tmp_path, monkeypatch):
     _place(monkeypatch, SPARK)
     seen = []
-    out = fa.report(tmp_path, token="t", transport=_transport({"spark3.example-tailnet.ts.net"}, seen=seen), clock=lambda: NOW)
+    out = fa.report(tmp_path, token="t", transport=_transport({SPARK_HOST}, seen=seen), clock=lambda: NOW)
     assert out["ok"] is True and out["url"] == SPARK and out["waiting_on_you"] == 1
-    assert [r.url.host for r in seen] == ["127.0.0.1", "spark3.example-tailnet.ts.net"]
+    assert [r.url.host for r in seen] == ["127.0.0.1", SPARK_HOST]
     assert seen[-1].headers["authorization"] == "Bearer t" and seen[-1].url.path == "/api/attention"
 
 
@@ -109,7 +110,7 @@ def test_attention_keeps_the_pinned_address_first_and_adds_the_placed_one(tmp_pa
     monkeypatch.setenv("CASSANDRA_FAUSTUS_URL", "http://127.0.0.1:7777")
     _place(monkeypatch, SPARK)
     seen = []
-    out = fa.report(tmp_path, token="t", transport=_transport({"spark3.example-tailnet.ts.net"}, seen=seen), clock=lambda: NOW)
+    out = fa.report(tmp_path, token="t", transport=_transport({SPARK_HOST}, seen=seen), clock=lambda: NOW)
     assert out["ok"] is True and [str(r.url) for r in seen][0].startswith("http://127.0.0.1:7777/")
 
 
@@ -145,7 +146,7 @@ def test_the_watcher_follows_faustus_to_the_spark(tmp_path, monkeypatch):
     (tmp_path / "faustus-token").write_text("t\n", encoding="utf-8")
     sent = []
     watcher = fa.Watcher(tmp_path, wait_min=10, interval_s=60, emit=lambda name, data: sent.append((name, data)),
-                         clock=lambda: NOW, transport=_transport({"spark3.example-tailnet.ts.net"}, seen=[]))
+                         clock=lambda: NOW, transport=_transport({SPARK_HOST}, seen=[]))
     out = watcher.tick()
     assert out["ok"] is True and out["url"] == SPARK
     assert sent and sent[0][0] == fa.EVENT and sent[0][1]["session_id"] == "s1"
@@ -157,7 +158,7 @@ def test_the_watcher_follows_faustus_to_the_spark(tmp_path, monkeypatch):
 def test_farm_reads_the_state_from_the_spark(tmp_path, monkeypatch):
     _place(monkeypatch, SPARK)
     seen = []
-    reader = ff.FarmReader(min_interval_s=0.0, transport=_transport({"spark3.example-tailnet.ts.net"}, seen=seen))
+    reader = ff.FarmReader(min_interval_s=0.0, transport=_transport({SPARK_HOST}, seen=seen))
     out = ff.report(tmp_path, token="t", reader=reader, clock=lambda: NOW)
     assert out["ok"] is True and out["url"] == SPARK
     assert seen[-1].url.path == "/api/farm/state" and seen[-1].headers["authorization"] == "Bearer t"
@@ -167,17 +168,17 @@ def test_farm_etag_is_kept_for_the_address_that_answered(tmp_path, monkeypatch):
     """The refused PC address before the Spark one must not make every read a full download."""
     _place(monkeypatch, SPARK)
     seen = []
-    reader = ff.FarmReader(min_interval_s=0.0, transport=_transport({"spark3.example-tailnet.ts.net"}, seen=seen))
+    reader = ff.FarmReader(min_interval_s=0.0, transport=_transport({SPARK_HOST}, seen=seen))
     first = reader.read(tmp_path, token="t")
     second = reader.read(tmp_path, token="t")
     assert first["unchanged"] is False and second["unchanged"] is True and second["url"] == SPARK
-    spark_calls = [r for r in seen if r.url.host == "spark3.example-tailnet.ts.net"]
+    spark_calls = [r for r in seen if r.url.host == SPARK_HOST]
     assert "if-none-match" not in spark_calls[0].headers and spark_calls[1].headers["if-none-match"] == 'W/"spark"'
 
 
 def test_farm_returns_to_this_pc_when_faustus_is_back_here(tmp_path, monkeypatch):
     _place(monkeypatch, SPARK)
-    alive = {"spark3.example-tailnet.ts.net"}
+    alive = {SPARK_HOST}
     seen = []
 
     def handler(request):
@@ -204,6 +205,6 @@ def test_farm_never_sends_the_token_to_a_placed_address_off_the_tailnet(tmp_path
 
 def test_farm_accepts_a_tailnet_pin(tmp_path):
     seen = []
-    out = ff.report(tmp_path, url="https://spark3.example-tailnet.ts.net", token="t",
-                    reader=ff.FarmReader(min_interval_s=0.0, transport=_transport({"spark3.example-tailnet.ts.net"}, seen=seen)))
+    out = ff.report(tmp_path, url=SPARK, token="t",
+                    reader=ff.FarmReader(min_interval_s=0.0, transport=_transport({SPARK_HOST}, seen=seen)))
     assert out["ok"] is True and len(seen) == 1
