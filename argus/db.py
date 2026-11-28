@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
+from pathlib import Path
 
 from .hoard_link import sqlkit
 
 MIN_SQLITE = (3, 35, 0)
+CREATE_SETTINGS = "CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
 
 MIGRATIONS: list[str] = [
     # 1: core tables
-    """
+    f"""
     CREATE TABLE frames (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       captured_at REAL NOT NULL,
@@ -45,7 +48,7 @@ MIGRATIONS: list[str] = [
       text, window_title, app,
       tokenize = 'unicode61 remove_diacritics 2'
     );
-    CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    {CREATE_SETTINGS};
     CREATE TABLE exclusions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       kind TEXT NOT NULL CHECK (kind IN ('app', 'title')),
@@ -87,6 +90,35 @@ MIGRATIONS: list[str] = [
     CREATE INDEX frames_origin_id ON frames(origin, id);
     """,
 ]
+
+
+def read_private(conn: sqlite3.Connection) -> bool | None:
+    row = conn.execute("SELECT value FROM settings WHERE key = 'private'").fetchone()
+    choice = sqlkit.loads(row[0]) if row else None
+    return choice if isinstance(choice, bool) else None
+
+
+def read_offline_private(path: Path) -> bool | None:
+    if not path.exists():
+        return None
+    with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as conn:
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'settings'").fetchone():
+            return read_private(conn)
+        return None
+
+
+def write_offline_private(path: Path, choice: bool | None) -> bool:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with closing(sqlite3.connect(path, timeout=15)) as conn, conn:
+        # Also serializes legacy toggle requests with other SQLite writers.
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(CREATE_SETTINGS)
+        value = not read_private(conn) if choice is None else choice
+        conn.execute(
+            "INSERT INTO settings(key, value) VALUES ('private', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (sqlkit.dumps(value),),
+        )
+        return value
 
 
 def check_sqlite() -> None:

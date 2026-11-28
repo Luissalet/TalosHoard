@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from .db import Database
+from .db import Database, read_private
 
 OcrBackendName = Literal["auto", "rapidocr", "winocr", "tesseract", "family"]
 CaptureScope = Literal["active", "all"]  # active = only the monitor with the foreground window
@@ -51,6 +51,14 @@ class SettingsPatch(BaseModel):
     import_watch_recursive: bool | None = None
 
 
+class PrivateBody(BaseModel):
+    private: bool | None = None  # omitted = toggle
+
+
+def private_status(choice: bool | None) -> dict[str, bool]:
+    return {"private": bool(choice), "configured": choice is not None}
+
+
 class SettingsStore:
     def __init__(self, db: Database):
         self.db = db
@@ -74,14 +82,22 @@ class SettingsStore:
             self._cache = Settings()
         return self._cache
 
+    def private_choice(self) -> bool | None:
+        with self.db.lock:
+            return read_private(self.db.conn)
+
     def update(self, patch: SettingsPatch | dict) -> Settings:
         data = patch.model_dump(exclude_none=True) if isinstance(patch, SettingsPatch) else dict(patch)
-        merged = self.get().model_copy(update=data)
-        merged = Settings.model_validate(merged.model_dump())
         with self.db.lock:
+            merged = self.get().model_copy(update=data)
+            merged = Settings.model_validate(merged.model_dump())
+            persisted = merged.model_dump()
+            if "private" not in data:
+                # Saving an unrelated setting must not record a privacy choice.
+                persisted.pop("private")
             self.db.conn.executemany(
                 "INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                [(key, json.dumps(value)) for key, value in merged.model_dump().items()],
+                [(key, json.dumps(value)) for key, value in persisted.items()],
             )
-        self._cache = merged
-        return merged
+            self._cache = merged
+            return merged

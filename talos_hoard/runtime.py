@@ -1,7 +1,7 @@
 """One ASGI process with explicit, independently owned module lifetimes.
 
-Catalog discovery never imports an engine. A disabled module has no database
-connection, worker, collector, watcher or listening socket.
+Catalog discovery never starts an engine. Disabled modules have no persistent
+database connection, worker, collector, watcher or listening socket.
 """
 from __future__ import annotations
 
@@ -100,8 +100,13 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
     catalog = json.loads((root / "catalog.json").read_text(encoding="utf-8"))
     by_name = {t["name"]: t for t in catalog}
 
+    screen_privacy = None
     if product == "talos":
         from funes_hoard.sources import SourceCallError
+
+        from .screen_privacy import offline_screen_privacy
+
+        screen_privacy = offline_screen_privacy(modules["screen"].data_dir)
         native_sources = {}
         for source, target in (("argus", "screen"), ("echo", "clipboard"), ("scribe", "audio")):
             async def native_source(path, payload, key=target):
@@ -304,6 +309,8 @@ def create_runtime(*, name, product, root, data_dir, specs, factory, port):
         if module.app is None and not path.startswith("api/"):
             return RedirectResponse("/#" + key, status_code=303)
         from .native_response import NativeResponse
-        return NativeResponse(module, path, name=name, product=product, on_quit=persist)
+        privacy = screen_privacy if key == "screen" and path == "api/private" and request.method in ("GET", "POST") else None
+        return NativeResponse(module, path, name=name, product=product, on_quit=persist,
+                              when_disabled=privacy)
 
     return app

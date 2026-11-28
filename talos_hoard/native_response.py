@@ -7,10 +7,11 @@ from starlette.responses import JSONResponse, Response
 
 
 class NativeResponse(Response):
-    def __init__(self, module, path, *, name, product, on_quit):
+    def __init__(self, module, path, *, name, product, on_quit, when_disabled=None):
         super().__init__()
         self.module, self.path = module, path
         self.name, self.product, self.on_quit = name, product, on_quit
+        self.when_disabled = when_disabled
 
     def decorate(self, body, headers):
         key, path, product, name = self.module.spec["id"], self.path, self.product, self.name
@@ -45,6 +46,8 @@ class NativeResponse(Response):
         task = asyncio.current_task()
         async with module.lock:
             if module.app is None or module.stopping:
+                if self.when_disabled is not None:
+                    return await self.when_disabled(scope, receive, send)
                 return await JSONResponse({"error": "module_disabled", "module": module.spec["id"]}, status_code=409)(scope, receive, send)
             native = module.app
             module.requests[task] = self.path.endswith("/live")

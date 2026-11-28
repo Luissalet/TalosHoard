@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from ..exclusions import first_match
-from ..settings import SettingsPatch
+from ..settings import PrivateBody, SettingsPatch, private_status
 from .deps import services
 
 router = APIRouter(prefix="/api")
@@ -41,8 +41,9 @@ def resume(request: Request):
     return {"ok": True, "state": svc.recorder.state()}
 
 
-class PrivateBody(BaseModel):
-    private: bool | None = None  # omitted = toggle
+@router.get("/private")
+def get_private(request: Request):
+    return private_status(services(request).settings.private_choice())
 
 
 @router.post("/private")
@@ -51,7 +52,7 @@ def private(request: Request, body: PrivateBody | None = None):
     current = svc.settings.get().private
     value = (not current) if body is None or body.private is None else body.private
     svc.update_settings({"private": value})
-    return {"ok": True, "private": value, "state": svc.recorder.state()}
+    return {"ok": True, **private_status(value), "state": svc.recorder.state()}
 
 
 # ---------- exclusions ----------

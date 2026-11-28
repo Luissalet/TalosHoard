@@ -1,6 +1,8 @@
 import json
+import sqlite3
 import sys
 import threading
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -44,6 +46,75 @@ def test_defaults_and_discovery_never_create_module_data(tmp_path):
         response = c.post("/api/agent/call", headers={"Authorization": "Bearer " + app.state.token},
                           json={"name": "clip_recent", "arguments": {}})
         assert response.status_code == 409
+
+
+def test_screen_privacy_while_off_only_uses_preference_table(tmp_path, monkeypatch):
+    module_data = tmp_path / "adopted screen #1"
+    config_dir = tmp_path / "talos"
+    config_dir.mkdir()
+    (config_dir / "modules.json").write_text(json.dumps({"data_paths": {"screen": str(module_data)}}))
+    app = create_app(config_dir, port=5220)
+    screen = app.state.modules["screen"]
+
+    def unexpected_factory(*args):
+        pytest.fail("Saving a choice started the Screen engine")
+
+    monkeypatch.setattr(screen, "factory", unexpected_factory)
+    route = "/screen/api/private"
+    with client(app) as c:
+        assert c.get(route).json() == {"private": False, "configured": False}
+        assert not module_data.exists()
+        assert c.post(route, json={"private": True}, headers={"Origin": "https://example.com"}).status_code == 403
+        assert c.post(route, json={"private": True}, headers={"Host": "example.com"}).status_code == 403
+        assert c.post(route, json={"private": []}).status_code == 422
+        assert c.put("/screen/api/settings", json={"private": True}).status_code == 409
+        agent = c.post("/api/agent/call", headers={"Authorization": "Bearer " + app.state.token},
+                       json={"name": "screen_set_private", "arguments": {"private": True}})
+        assert agent.status_code == 404
+        assert not module_data.exists()
+
+        response = c.post(route, json={"private": True})
+        assert response.status_code == 200
+        assert response.json() == {"ok": True, "private": True, "configured": True}
+        assert c.get(route).json() == {"private": True, "configured": True}
+        db = module_data / "argus-hoard.db"
+        assert list(module_data.iterdir()) == [db]
+        with closing(sqlite3.connect(db)) as conn:
+            assert conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall() == [("settings",)]
+            assert conn.execute("SELECT key, value FROM settings").fetchall() == [("private", "true")]
+            with conn:
+                conn.execute("INSERT INTO settings VALUES ('interval_s', '8')")
+
+        assert c.post(route, json={"private": False}).json() == {"ok": True, "private": False, "configured": True}
+        assert c.get("/screen/api/status").status_code == 409
+        assert screen.app is screen.stack is None
+        with closing(sqlite3.connect(db)) as conn:
+            assert dict(conn.execute("SELECT key, value FROM settings")) == {"private": "false", "interval_s": "8"}
+
+    with client(create_app(config_dir, port=5220)) as c:
+        assert c.get(route).json() == {"private": False, "configured": True}
+
+
+def test_screen_privacy_is_shared_with_the_running_module(tmp_path, quiet_engines):
+    with client(create_app(tmp_path, port=5220)) as c:
+        route = "/screen/api/private"
+        assert c.post(route, json={"private": True}).status_code == 200
+        assert c.put("/api/modules/screen", json={"enabled": True}).status_code == 200
+        assert c.get("/screen/api/status").json()["state"] == "private"
+        assert c.get(route).json() == {"private": True, "configured": True}
+        result = c.post(route).json()
+        assert result == {"ok": True, "private": False, "configured": True, "state": "watching"}
+        assert c.put("/api/modules/screen", json={"enabled": False}).status_code == 200
+        assert c.get(route).json() == {"private": False, "configured": True}
+
+
+def test_unrelated_screen_settings_do_not_set_a_privacy_choice(tmp_path, quiet_engines):
+    with client(create_app(tmp_path, port=5220)) as c:
+        assert c.put("/api/modules/screen", json={"enabled": True}).status_code == 200
+        assert c.put("/screen/api/settings", json={"interval_s": 8}).status_code == 200
+        assert c.get("/screen/api/private").json() == {"private": False, "configured": False}
+        assert c.put("/api/modules/screen", json={"enabled": False}).status_code == 200
+        assert c.get("/screen/api/private").json() == {"private": False, "configured": False}
 
 
 def test_clipboard_independent_persistent_and_no_bypass(tmp_path, quiet_engines):
